@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+_tmp_cookie_copy/
+upload_test/
+.agents/
+.pytest_cache/
+.cache/
+node_modules/
+dist/
+build/
+

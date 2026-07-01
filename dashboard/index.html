@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Estratégia de Rebalanceamento IBKR</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Portfolio IBKR | Fechamento 01/06/2026</p>
+        <h1>Estratégia de rebalanceamento</h1>
+      </div>
+      <div class="source-note">
+        Snapshot baseado nos CSVs em <code>analysis_outputs</code>
+      </div>
+    </header>
+
+    <main>
+      <section class="kpi-grid" aria-label="Resumo da carteira">
+        <article class="kpi-card">
+          <span>Valor estimado</span>
+          <strong id="kpiTotal">--</strong>
+          <small>Base usada para os pesos alvo</small>
+        </article>
+        <article class="kpi-card">
+          <span>Cash atual</span>
+          <strong id="kpiCash">--</strong>
+          <small>Antes do rebalanceamento</small>
+        </article>
+        <article class="kpi-card success">
+          <span>Cash alvo</span>
+          <strong id="kpiCashTarget">--</strong>
+          <small>Acima do mínimo de 5%</small>
+        </article>
+        <article class="kpi-card success">
+          <span>Cash + equivalentes</span>
+          <strong id="kpiEquivalents">--</strong>
+          <small>Cash, XOVR e bond ECOPET</small>
+        </article>
+      </section>
+
+      <section class="panel hero-panel">
+        <div>
+          <p class="eyebrow">Tese operacional</p>
+          <h2>Reduzir concentração, financiar convexidade e preservar liquidez</h2>
+          <p>
+            A proposta diminui pesos excessivos em NVDA, IBM, JPM e quantum,
+            aumenta exposição a espaço, defesa, urânio, nuclear e minerais críticos,
+            e mantém caixa acima do limite definido.
+          </p>
+        </div>
+        <div class="compliance-box">
+          <span>Status de liquidez</span>
+          <strong>Conforme</strong>
+          <p>Cash alvo de 8,0% e equivalentes defensivos de 15,0%.</p>
+        </div>
+      </section>
+
+      <section class="layout-grid">
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Prioridade</p>
+              <h2>Maiores movimentos</h2>
+            </div>
+            <span id="tradeCount" class="count-pill">-- ativos</span>
+          </div>
+          <div id="majorMoves" class="move-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Atual vs alvo</p>
+              <h2>Distribuição dos principais ativos</h2>
+            </div>
+          </div>
+          <div id="allocationBars" class="bars"></div>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading controls-heading">
+          <div>
+            <p class="eyebrow">Execução</p>
+            <h2>Detalhamento de cada movimento</h2>
+          </div>
+          <div class="controls" aria-label="Filtros e ordenação">
+            <div class="segmented" id="filterButtons"></div>
+            <label>
+              Ordenar
+              <select id="sortSelect">
+                <option value="absTrade">Maior movimento</option>
+                <option value="targetWeight">Maior peso alvo</option>
+                <option value="category">Categoria</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ativo</th>
+                <th>Ação</th>
+                <th>Atual</th>
+                <th>Alvo</th>
+                <th>Trade</th>
+                <th>Peso alvo</th>
+                <th>Racional</th>
+              </tr>
+            </thead>
+            <tbody id="tradeTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Mapa estratégico</p>
+            <h2>Teses por bloco</h2>
+          </div>
+        </div>
+        <div id="thesisGrid" class="thesis-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Metas</p>
+            <h2>Holdings e sugestões dos anexos</h2>
+          </div>
+        </div>
+        <div class="dual-table">
+          <div>
+            <h3>Carteira IBKR</h3>
+            <div class="table-wrap compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Preço</th>
+                    <th>Meta dez/26</th>
+                    <th>Upside</th>
+                    <th>Viés</th>
+                  </tr>
+                </thead>
+                <tbody id="holdingsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3>Watchlist dos anexos</h3>
+            <div class="table-wrap compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Categoria</th>
+                    <th>Preço</th>
+                    <th>Meta</th>
+                    <th>Prioridade</th>
+                  </tr>
+                </thead>
+                <tbody id="watchlistTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="disclaimer">
+        <strong>Aviso:</strong> este dashboard organiza um cenário-base interno para dezembro de 2026,
+        derivado dos anexos e do extrato IBKR. Não é recomendação financeira personalizada.
+        Ativos sem preço verificável em 01/06/2026 são identificados como tal.
+      </section>
+    </main>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

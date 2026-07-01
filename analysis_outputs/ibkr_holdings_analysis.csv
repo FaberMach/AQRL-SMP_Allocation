@@ -1,0 +1,27 @@
+symbol,yahoo,quantity,price_2026_06_01,currency,market_value_usd_if_usd,target_dec_2026,upside_to_target_pct,category,action_bias,thesis
+ICG,ICG.CN,8,0.46,CAD,3.68,0.46,0.0,Microcap Canada,manter apenas residual,posição residual CAD; baixa liquidez
+AMZN,AMZN,50,261.26,USD,"13,063.00",297.84,14.0,Core tech,manter/aumentar moderado,"cloud, ads e consumo; qualidade alta"
+COPX,COPX,100,90.06,USD,"9,006.00",100.87,12.0,ETF cobre,manter,eletrificação e déficit estrutural de cobre
+GOOGL,GOOGL,25,376.37,USD,"9,409.25",421.53,12.0,Core tech,manter,IA/search/cloud; valuation ainda razoável
+HYMC,HYMC,10,32.84,USD,328.40,29.56,-10.0,Microcap metais,zerar ou residual,"opcionalidade alta, execução fraca"
+IBM,IBM,100,320.42,USD,"32,042.00",333.24,4.0,Value tech,reduzir,"defensiva, IA corporativa, menor convexidade"
+ICGB,,3,,,,,0.0,Residual sem cotação,sem ação econômica,posição com preço zero no extrato IBKR
+ICGC,,3,,,,,0.0,Residual sem cotação,sem ação econômica,posição com preço zero no extrato IBKR
+ICGD,,3,,,,,0.0,Residual sem cotação,sem ação econômica,posição com preço zero no extrato IBKR
+ICGE,,3,,,,,0.0,Residual sem cotação,sem ação econômica,posição com preço zero no extrato IBKR
+ICGF,,3,,,,,0.0,Residual sem cotação,sem ação econômica,posição com preço zero no extrato IBKR
+JPM,JPM,100,296.58,USD,"29,658.00",314.37,6.0,Financeiro core,reduzir,"banco de qualidade, mas peso atual alto"
+KTOS,KTOS,60,63.49,USD,"3,809.40",74.92,18.0,Defesa,manter,"drones, sistemas autônomos e defesa"
+LAES,LAES,1000,3.55,USD,"3,550.00",4.44,25.0,Semicondutores/segurança,reduzir para cesta,microcap com opcionalidade e risco
+MSFT,MSFT,50,460.52,USD,"23,026.00",506.57,10.0,Core tech,manter,cloud/IA; qualidade máxima
+NAUFF,NAUFF,2000,2.08,USD,"4,160.00",2.60,25.0,Urânio,manter pequeno,opcionalidade em ciclo nuclear
+NTDOY,NTDOY,75,11.25,USD,843.75,12.04,7.0,Consumo/games,reduzir,"qualidade, mas fora das teses anexas"
+NVDA,NVDA,200,224.36,USD,"44,872.00",246.80,10.0,AI semis,reduzir peso,"liderança em IA, valuation exige disciplina"
+QBTS,QBTS,500,29.18,USD,"14,590.00",35.02,20.0,Quantum,reduzir,alto beta e risco de diluição
+RGTI,RGTI,200,25.63,USD,"5,126.00",30.76,20.0,Quantum,reduzir,alto beta e risco de diluição
+RKLB,RKLB,60,122.39,USD,"7,343.40",165.23,35.0,Espaço/defesa,aumentar,uma das top 5 dos anexos; execução real
+RTX,RTX,30,174.41,USD,"5,232.30",188.36,8.0,Defesa core,manter,"defesa defensiva, menor upside que KTOS/RKLB"
+SHLD,SHLD,150,65.62,USD,"9,843.00",73.49,12.0,ETF defesa,manter,defesa/segurança como tema estrutural
+URA,URA,100,50.54,USD,"5,054.00",58.12,15.0,ETF urânio,manter,ciclo nuclear e demanda de energia para IA
+USGDF,USGDF,1000,0.12,USD,124.80,0.12,0.0,Microcap,zerar se possível,posição residual ilíquida
+XOVR,XOVR,100,20.58,USD,"2,058.00",21.40,4.0,Renda fixa ETF,manter como caixa equivalente,equivalente defensivo/cash-like
