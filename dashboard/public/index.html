@@ -3,161 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Global Portfolio Model Runner - Public</title>
-    <link rel="stylesheet" href="../styles.css" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Snapshot publico sanitizado do Global Portfolio Model Runner."
+    />
+    <title>Global Portfolio Model Runner | Public</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <div class="background-orb background-orb-a" aria-hidden="true"></div>
-    <div class="background-orb background-orb-b" aria-hidden="true"></div>
+  <body data-view="public">
+    <div id="root">Carregando snapshot publico...</div>
 
-    <header class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">Public snapshot</p>
-        <h1>Global Portfolio Model Runner</h1>
-        <p class="hero-text">
-          Versao sanitizada do modelo global: mostra resumo, temas, ideias principais e
-          precos globais sem expor holdings, residuals ou a watchlist completa.
-        </p>
-
-        <div class="hero-controls">
-          <label class="field">
-            <span>Capital do modelo (USD)</span>
-            <input id="capitalInput" type="number" min="0" step="1000" inputmode="decimal" />
-          </label>
-
-          <div class="field">
-            <span>Cenario</span>
-            <div id="scenarioTray" class="scenario-tray" role="tablist" aria-label="Selecao de cenario"></div>
-          </div>
-        </div>
-      </div>
-
-      <aside class="hero-card">
-        <span class="hero-card-label">Leitura publica</span>
-        <strong id="heroScenario">--</strong>
-        <p id="heroScenarioDesc">--</p>
-        <div class="hero-card-list">
-          <div>
-            <span>Liquidez alvo</span>
-            <strong id="heroLiquidity">--</strong>
-          </div>
-          <div>
-            <span>Capital investivel</span>
-            <strong id="heroInvestable">--</strong>
-          </div>
-          <div>
-            <span>Snapshot global</span>
-            <strong id="heroPriceDate">--</strong>
-          </div>
-          <div>
-            <span>Top ideas</span>
-            <strong id="heroTopIdeas">--</strong>
-          </div>
-        </div>
-      </aside>
-    </header>
-
-    <main class="page">
-      <section class="kpi-grid" aria-label="Resumo publico da carteira">
-        <article class="kpi-card accent teal">
-          <span>Capital base</span>
-          <strong id="kpiCapital">--</strong>
-          <small>Base de pesos do modelo</small>
-        </article>
-        <article class="kpi-card accent gold">
-          <span>Liquidez atual</span>
-          <strong id="kpiLiquidityCurrent">--</strong>
-          <small>Resumo do snapshot</small>
-        </article>
-        <article class="kpi-card accent blue">
-          <span>Precos globais</span>
-          <strong id="kpiMarketCount">--</strong>
-          <small>Ideias principais e FX convertido</small>
-        </article>
-        <article class="kpi-card accent coral">
-          <span>Top ideas</span>
-          <strong id="kpiTopIdeas">--</strong>
-          <small>Teses convexas do estudo</small>
-        </article>
-        <article class="kpi-card accent violet">
-          <span>Exposicao nao-USD</span>
-          <strong id="kpiNonUsd">--</strong>
-          <small>Leitura global da carteira</small>
-        </article>
-      </section>
-
-      <section class="panel intro-panel">
-        <div>
-          <p class="eyebrow">Versao sanitizada</p>
-          <h2>Resumo do modelo sem dados sensiveis</h2>
-          <p>
-            Esta visao publica preserva a estrutura do estudo e a leitura de mercado, mas
-            remove detalhes operacionais de holdings, residuals e watchlist completa.
-          </p>
-        </div>
-        <div class="callout">
-          <span>Compartilhamento</span>
-          <strong>Leitura executiva</strong>
-          <p>Ideal para enviar a terceiros sem expor a composicao completa da carteira.</p>
-        </div>
-      </section>
-
-      <section class="layout-grid">
-        <article class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Peso por tema</p>
-              <h2>Alocacao do cenario selecionado</h2>
-            </div>
-            <span id="themeCount" class="count-pill">-- temas</span>
-          </div>
-          <div id="themeBars" class="bars"></div>
-        </article>
-
-        <article class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Mercado global</p>
-              <h2>Precos locais, FX e equivalentes em USD</h2>
-            </div>
-            <span id="priceCoverage" class="count-pill">-- ativos</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ativo</th>
-                  <th>Yahoo</th>
-                  <th>Moeda</th>
-                  <th>Preco local</th>
-                  <th>FX/USD</th>
-                  <th>Preco USD</th>
-                  <th>Data</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="marketPriceTable"></tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Top ideas</p>
-            <h2>As cinco teses mais convexas do estudo</h2>
-          </div>
-        </div>
-        <div id="topIdeas" class="idea-grid"></div>
-      </section>
-
-      <section class="disclaimer">
-        <strong>Aviso:</strong> esta e a versao sanitizada do dashboard. Os precos de mercado e FX
-        sao convertidos para USD, mas nao ha detalhes de holdings ou residuals individuais.
-      </section>
-    </main>
-
+    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emotion/react@11.13.0/dist/emotion-react.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emotion/styled@11.13.0/dist/emotion-styled.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mui/material@5.16.4/umd/material-ui.production.min.js"></script>
     <script src="data.js"></script>
     <script src="app.js"></script>
   </body>

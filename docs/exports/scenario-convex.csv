@@ -1,0 +1,27 @@
+asset,theme,region,currency,current_value_usd,target_value_usd,trade_usd,target_weight_pct,action,fixed,thesis
+Cash,Liquidez,United States,USD,"USD 26,854","USD 14,133","-USD 12,721",6.00,Liquidez,yes,Preservar liquidez estrategica e cumprir o piso de 5% com folga.
+XOVR,Liquidez,United States,USD,"USD 2,111","USD 9,422","USD 7,311",4.00,Liquidez,yes,Aumentar equivalente defensivo para reduzir volatilidade sem sair de caixa.
+ECOPET_BOND,Liquidez,Colombia,USD,"USD 6,028","USD 7,067","USD 1,038",3.00,Liquidez,yes,Manter renda fixa em USD como camada defensiva do modelo.
+AMZN,Nucleo qualidade,United States,USD,"USD 12,085","USD 10,779","-USD 1,306",4.58,Reduzir,no,"Manter qualidade em cloud, ads e consumo, apenas aparando excesso pequeno."
+GOOGL,Nucleo qualidade,United States,USD,"USD 9,030","USD 10,779","USD 1,748",4.58,Comprar,no,"Aumentar para peso de nucleo pela combinacao de IA, search e cloud."
+MSFT,Nucleo qualidade,United States,USD,"USD 19,214","USD 12,934","-USD 6,280",5.49,Reduzir,no,"Preservar posicao core em cloud/IA, mas reduzir concentracao para financiar convexidade."
+NVDA,Nucleo qualidade,United States,USD,"USD 39,516","USD 17,246","-USD 22,270",7.32,Reduzir,no,"Continuar exposto a lideranca em IA, porem com disciplina de tamanho."
+IBM,Nucleo qualidade,United States,USD,"USD 28,625","USD 8,623","-USD 20,002",3.66,Reduzir,no,Reduzir ativo defensivo de menor convexidade para liberar capital para teses do estudo.
+JPM,Nucleo qualidade,United States,USD,"USD 33,407","USD 12,934","-USD 20,473",5.49,Reduzir,no,"Manter banco de qualidade, mas reduzir peso elevado e dependencia de financeiro tradicional."
+RTX,Defesa e espaco,United States,USD,"USD 5,753","USD 7,224","USD 1,471",3.07,Comprar,no,"Reforcar defesa core, com menor upside que RKLB e KTOS, mas melhor perfil defensivo."
+KTOS,Defesa e espaco,United States,USD,"USD 3,182","USD 9,632","USD 6,450",4.09,Comprar,no,"Aumentar exposicao a drones, sistemas autonomos e guerra eletronica."
+SHLD,Defesa e espaco,United States,USD,"USD 9,180","USD 9,632",USD 452,4.09,Manter,no,Manter ETF de defesa como exposicao diversificada ao tema geopolitico.
+URA,Uranio e nuclear,United States,USD,"USD 4,318","USD 13,301","USD 8,983",5.65,Comprar,no,Aumentar bloco de uranio pelo ciclo nuclear e pela demanda de energia para IA.
+COPX,Minerais criticos,United States,USD,"USD 7,529","USD 10,274","USD 2,745",4.36,Comprar,no,Reforcar cobre como tese de eletrificacao global com risco mais diversificado.
+RKLB,Defesa e espaco,United States,USD,"USD 6,004","USD 14,448","USD 8,444",6.13,Comprar,no,"Aumentar uma das top 5 do estudo, com execucao operacional real em espaco e defesa."
+ASTS,Defesa e espaco,United States,USD,USD 0,"USD 9,632","USD 9,632",4.09,Comprar,no,"Iniciar exposicao a infraestrutura celular via satelite, uma das maiores optionalidades."
+NXE,Uranio e nuclear,United States,USD,USD 0,"USD 10,641","USD 10,641",4.52,Comprar,no,"Iniciar posicao em ativo tier-1 de uranio, destacado como qualidade geologica superior."
+SMR,Uranio e nuclear,United States,USD,USD 0,"USD 7,981","USD 7,981",3.39,Comprar,no,"Iniciar exposicao a SMRs, tese nuclear com opcionalidade estrategica."
+ARR.AX,Minerais criticos,Australia,AUD,USD 0,"USD 5,137","USD 5,137",2.18,Comprar,no,Adicionar rare earths geopolitico dos EUA em tamanho controlado pelo risco elevado.
+MP,Minerais criticos,United States,USD,USD 0,"USD 5,137","USD 5,137",2.18,Comprar,no,"Adicionar rare earths em producao nos EUA, com menor risco relativo que ARR."
+UUUU,Uranio e nuclear,United States,USD,USD 0,"USD 5,321","USD 5,321",2.26,Comprar,no,"Adicionar hibrido de uranio, monazita e rare earths para ampliar a cesta estrategica."
+SGML,Minerais criticos,Brazil,USD,USD 0,"USD 5,137","USD 5,137",2.18,Comprar,no,Adicionar litio Brasil/ESG como opcionalidade de supply chain critica.
+QBTS,Cauda especulativa,United States,USD,"USD 11,750","USD 6,192","-USD 5,558",2.63,Reduzir,no,"Reduzir quantum para tamanho de cesta, diminuindo risco de diluicao e volatilidade extrema."
+RGTI,Cauda especulativa,United States,USD,"USD 3,736","USD 4,644",USD 908,1.97,Manter,no,"Manter opcionalidade em quantum, mas com peso menor e compativel com risco binario."
+LAES,Cauda especulativa,United States,USD,"USD 3,100","USD 4,644","USD 1,544",1.97,Comprar,no,Manter microcap de seguranca/semis apenas como componente pequeno da cesta.
+NAUFF,Uranio e nuclear,United States,USD,"USD 2,980","USD 2,660",-USD 320,1.13,Manter,no,"Reduzir para posicao pequena, mantendo opcionalidade no ciclo nuclear sem concentrar risco."
