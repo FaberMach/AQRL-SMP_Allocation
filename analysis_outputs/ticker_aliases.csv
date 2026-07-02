@@ -1,0 +1,5 @@
+symbol,status,preferred_symbol,notes
+FCU,unresolved,,Fission Uranium returned no verifiable Yahoo close for the snapshot date; keep as watchlist-only until corporate action/ticker alias is confirmed.
+LAAC,unresolved,,Lithium Argentina returned no verifiable Yahoo close for the snapshot date in the tested symbols.
+NGEX,unresolved,,NGEx returned no verifiable Yahoo close for the snapshot date in the tested symbols.
+PMET,unresolved,,Patriot Battery Metals returned no verifiable Yahoo close for the snapshot date in the tested symbols.

@@ -3,14 +3,16 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 import ssl
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
 from urllib.request import Request, urlopen
+
+from market_data import build_fx_rate_map, fetch_chart_close as market_fetch_chart_close, normalize_currency, price_to_usd
 
 
 WORKDIR = Path(__file__).resolve().parent
@@ -18,7 +20,7 @@ OUTDIR = WORKDIR / "analysis_outputs"
 OUTDIR.mkdir(exist_ok=True)
 SSL_CONTEXT = ssl._create_unverified_context()
 
-PRICE_DATE = "2026-06-01"
+PRICE_DATE = os.environ.get("PRICE_DATE", date.today().isoformat())
 CASH_USD = 26854.02
 NAV_SOURCE_MAY7 = 234662.78
 ECOPET_BOND_FACE = 6000.0
@@ -152,32 +154,7 @@ def unix(date_str: str) -> int:
 
 
 def fetch_chart_close(yahoo_symbol: str, date_str: str = PRICE_DATE) -> dict:
-    p1 = unix(date_str)
-    p2 = p1 + 3 * 86400
-    url = (
-        "https://query1.finance.yahoo.com/v8/finance/chart/"
-        f"{quote(yahoo_symbol, safe='')}?period1={p1}&period2={p2}&interval=1d&events=history"
-    )
-    req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urlopen(req, timeout=20, context=SSL_CONTEXT) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except (HTTPError, URLError, TimeoutError) as exc:
-        return {"symbol": yahoo_symbol, "close": None, "currency": None, "date": None, "url": url, "error": str(exc)}
-    result = (data.get("chart", {}).get("result") or [None])[0]
-    if not result:
-        err = data.get("chart", {}).get("error")
-        return {"symbol": yahoo_symbol, "close": None, "currency": None, "date": None, "url": url, "error": str(err)}
-    timestamps = result.get("timestamp") or []
-    quote_data = ((result.get("indicators") or {}).get("quote") or [{}])[0]
-    closes = quote_data.get("close") or []
-    currency = result.get("meta", {}).get("currency")
-    for ts, close in zip(timestamps, closes):
-        if close is not None:
-            dt = datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
-            if dt >= date_str:
-                return {"symbol": yahoo_symbol, "close": float(close), "currency": currency, "date": dt, "url": url, "error": ""}
-    return {"symbol": yahoo_symbol, "close": None, "currency": currency, "date": None, "url": url, "error": "no close returned"}
+    return market_fetch_chart_close(yahoo_symbol, date_str)
 
 
 def money(x: float | None) -> str:
@@ -207,32 +184,74 @@ def main() -> None:
         print(f"{i:02d}/{len(all_yahoo)} {sym}: {price_rows[sym].get('close')} {price_rows[sym].get('currency')} {price_rows[sym].get('error')}")
         time.sleep(0.15)
 
+    fx_rates = build_fx_rate_map([row["currency"] for row in price_rows.values() if row.get("currency")], PRICE_DATE)
+
+    price_output_rows = []
+    for sym in all_yahoo:
+        fetched = price_rows.get(sym, {})
+        normalized_currency, local_multiplier = normalize_currency(fetched.get("currency"))
+        fx_rate = fx_rates.get(normalized_currency, {}).get("rate")
+        local_close = fetched.get("close")
+        if local_close is not None:
+            local_close = float(local_close) * local_multiplier
+        usd_close = price_to_usd(local_close, normalized_currency, fx_rates)
+        price_output_rows.append({
+            "symbol": sym,
+            "close": money(local_close),
+            "currency": normalized_currency,
+            "currency_raw": fetched.get("currency") or "",
+            "fx_to_usd": f"{fx_rate:.6f}" if isinstance(fx_rate, (int, float)) and fx_rate is not None else "",
+            "close_usd": money(usd_close),
+            "date": fetched.get("date") or "",
+            "url": fetched.get("url") or "",
+            "error": fetched.get("error") or "",
+        })
+
     with (OUTDIR / "prices_2026-06-01.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["symbol", "close", "currency", "date", "url", "error"])
+        writer = csv.DictWriter(f, fieldnames=["symbol", "close", "currency", "currency_raw", "fx_to_usd", "close_usd", "date", "url", "error"])
         writer.writeheader()
-        writer.writerows(price_rows.values())
+        writer.writerows(price_output_rows)
 
     holding_rows = []
     total_equity = 0.0
+    holding_value_map = {}
     for h in HOLDINGS:
         fetched = price_rows.get(h.yahoo, {"close": None, "currency": "", "error": "sem ticker Yahoo; preço zero no extrato"})
-        price = fetched["close"]
-        value = h.quantity * price if price is not None else None
-        if value is not None and (fetched["currency"] in ("USD", None)):
-            total_equity += value
-        target = price * h.target_multiple if price is not None else None
+        normalized_currency, local_multiplier = normalize_currency(fetched.get("currency"))
+        fx_rate = fx_rates.get(normalized_currency, {}).get("rate")
+        price_local = fetched.get("close")
+        if price_local is not None:
+            price_local = float(price_local) * local_multiplier
+        price_usd = price_to_usd(price_local, normalized_currency, fx_rates)
+        value_local = h.quantity * price_local if price_local is not None else None
+        value_usd = price_to_usd(value_local, normalized_currency, fx_rates)
+        if value_usd is not None:
+            total_equity += value_usd
+            holding_value_map[h.symbol] = value_usd
+        else:
+            holding_value_map[h.symbol] = 0.0
+        target_local = price_local * h.target_multiple if price_local is not None else None
+        target_usd = price_to_usd(target_local, normalized_currency, fx_rates)
         holding_rows.append({
             "symbol": h.symbol,
             "yahoo": h.yahoo,
             "quantity": h.quantity,
-            "price_2026_06_01": money(price),
-            "currency": fetched["currency"] or "",
-            "market_value_usd_if_usd": money(value),
-            "target_dec_2026": money(target),
+            "price_2026_06_01": money(price_local),
+            "price_usd": money(price_usd),
+            "currency": normalized_currency,
+            "currency_raw": fetched.get("currency") or "",
+            "fx_to_usd": f"{fx_rate:.6f}" if isinstance(fx_rate, (int, float)) and fx_rate is not None else "",
+            "market_value_local": money(value_local),
+            "market_value_usd": money(value_usd),
+            "market_value_usd_if_usd": money(value_usd),
+            "target_dec_2026": money(target_local),
+            "target_dec_2026_usd": money(target_usd),
             "upside_to_target_pct": f"{(h.target_multiple - 1) * 100:.1f}",
             "category": h.category,
             "action_bias": h.action_bias,
             "thesis": h.thesis,
+            "price_error": fetched.get("error") or "",
+            "price_date": fetched.get("date") or "",
         })
 
     with (OUTDIR / "ibkr_holdings_analysis.csv").open("w", newline="", encoding="utf-8") as f:
@@ -242,21 +261,33 @@ def main() -> None:
 
     watch_rows = []
     for w in WATCHLIST:
-        price = price_rows[w.yahoo]["close"]
-        target = price * w.target_multiple if price is not None else None
+        fetched = price_rows[w.yahoo]
+        normalized_currency, local_multiplier = normalize_currency(fetched.get("currency"))
+        fx_rate = fx_rates.get(normalized_currency, {}).get("rate")
+        price_local = fetched.get("close")
+        if price_local is not None:
+            price_local = float(price_local) * local_multiplier
+        price_usd = price_to_usd(price_local, normalized_currency, fx_rates)
+        target_local = price_local * w.target_multiple if price_local is not None else None
+        target_usd = price_to_usd(target_local, normalized_currency, fx_rates)
         watch_rows.append({
             "name": w.name,
             "symbol": w.symbol,
             "yahoo": w.yahoo,
-            "price_2026_06_01": money(price),
-            "currency": price_rows[w.yahoo]["currency"] or "",
-            "target_dec_2026": money(target),
+            "price_2026_06_01": money(price_local),
+            "price_usd": money(price_usd),
+            "currency": normalized_currency,
+            "currency_raw": fetched.get("currency") or "",
+            "fx_to_usd": f"{fx_rate:.6f}" if isinstance(fx_rate, (int, float)) and fx_rate is not None else "",
+            "target_dec_2026": money(target_local),
+            "target_dec_2026_usd": money(target_usd),
             "upside_to_target_pct": f"{(w.target_multiple - 1) * 100:.1f}",
             "priority": w.priority,
             "category": w.category,
             "thesis": w.thesis,
             "source": w.source,
-            "price_error": price_rows[w.yahoo]["error"],
+            "price_error": fetched.get("error") or "",
+            "price_date": fetched.get("date") or "",
         })
 
     with (OUTDIR / "watchlist_analysis.csv").open("w", newline="", encoding="utf-8") as f:
@@ -264,7 +295,7 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(watch_rows)
 
-    # Portfolio value estimate uses USD-priced listed assets plus cash and ECOPET bond clean price.
+    # Portfolio value estimate uses all listed assets converted to USD plus cash and the ECOPET bond.
     ecopet_bond_value = ECOPET_BOND_FACE * ECOPET_BOND_PRICE_20260601 / 100
     portfolio_value = total_equity + CASH_USD + ecopet_bond_value
     rebalance_rows = []
@@ -276,11 +307,7 @@ def main() -> None:
         elif sym == "ECOPET_BOND":
             current_value = ecopet_bond_value
         else:
-            current_value = sum(
-                (h.quantity * price_rows[h.yahoo]["close"])
-                for h in HOLDINGS
-                if h.yahoo == sym and price_rows[h.yahoo]["close"] is not None
-            )
+            current_value = holding_value_map.get(sym, 0.0)
         rebalance_rows.append({
             "asset": sym,
             "target_weight_pct": f"{weight * 100:.1f}",
@@ -344,15 +371,15 @@ def main() -> None:
             "## Carteira estimada",
             "",
             f"- Cash IBKR: USD {money(CASH_USD)}.",
-            f"- Valor estimado de ações USD em 2026-06-01: USD {money(total_equity)}.",
+            f"- Valor estimado de ações convertido para USD em {PRICE_DATE}: USD {money(total_equity)}.",
             f"- Bond ECOPET 6.875% 04/29/2030: preço limpo usado 100,47; valor estimado USD {money(ecopet_bond_value)}.",
             f"- Valor total estimado usado no rebalanceamento: USD {money(portfolio_value)}.",
             f"- Caixa alvo: 8,0%, acima do mínimo requerido de 5,0%.",
-            "- Observação: ativos em CAD, AUD e GBp aparecem com preço na moeda original; não foram convertidos para USD no cálculo da carteira, exceto posições USD. As posições ICGB-ICGF constam no extrato com preço zero e foram tratadas como residuais sem valor econômico.",
+            "- Observação: ativos em CAD, AUD, GBP e GBp foram convertidos para USD usando o câmbio do mesmo snapshot. As posições ICGB-ICGF constam no extrato com preço zero e foram tratadas como residuais sem valor econômico.",
             "",
             "## Metodologia das metas para dez/2026",
             "",
-            "As metas são projeções internas de cenário-base até dezembro de 2026, calculadas como preço de fechamento de 2026-06-01 multiplicado por um fator por tese/risco. Onde não há cobertura confiável no endpoint público, o fator privilegia qualidade, convexidade, liquidez e aderência aos anexos. Não é recomendação financeira personalizada.",
+            f"As metas são projeções internas de cenário-base até dezembro de 2026, calculadas como preço de fechamento de {PRICE_DATE} multiplicado por um fator por tese/risco. Onde não há cobertura confiável no endpoint público, o fator privilegia qualidade, convexidade, liquidez e aderência aos anexos. Não é recomendação financeira personalizada.",
             "",
             "## Proposta resumida",
             "",
@@ -379,9 +406,9 @@ def main() -> None:
             "",
             "## Arquivos gerados",
             "",
-            "- `prices_2026-06-01.csv`: preços baixados e URLs de fonte.",
-            "- `ibkr_holdings_analysis.csv`: holdings atuais, preço, meta e viés de ação.",
-            "- `watchlist_analysis.csv`: sugestões dos anexos, preço, meta e prioridade.",
+            "- `prices_2026-06-01.csv`: preços baixados, câmbio e URLs de fonte.",
+            "- `ibkr_holdings_analysis.csv`: holdings atuais, preço local e USD, meta e viés de ação.",
+            "- `watchlist_analysis.csv`: sugestões dos anexos, preço local e USD, meta e prioridade.",
             "- `rebalance_proposal.csv`: pesos alvo e compra/venda estimada em USD.",
         ]),
         encoding="utf-8",
