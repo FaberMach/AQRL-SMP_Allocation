@@ -1,0 +1,30 @@
+name: Validate dashboard pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Python
+        run: python -m compileall market_data.py portfolio_rebalance_analysis.py generate_dashboard_data.py validate_project.py run_pipeline.py
+
+      - name: Validate dashboard snapshot
+        run: python validate_project.py
+
+      - name: Check published dashboard files
+        run: |
+          test -f docs/index.html
+          test -f docs/app.js
+          test -f docs/data.js

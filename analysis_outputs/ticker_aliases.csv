@@ -1,5 +1,5 @@
 symbol,status,preferred_symbol,notes
-FCU,unresolved,,Fission Uranium returned no verifiable Yahoo close for the snapshot date; keep as watchlist-only until corporate action/ticker alias is confirmed.
-LAAC,unresolved,,Lithium Argentina returned no verifiable Yahoo close for the snapshot date in the tested symbols.
-NGEX,unresolved,,NGEx returned no verifiable Yahoo close for the snapshot date in the tested symbols.
-PMET,unresolved,,Patriot Battery Metals returned no verifiable Yahoo close for the snapshot date in the tested symbols.
+FCU,corporate_action,PDN.AX,Fission Uranium was acquired by Paladin Energy; keep original FCU as historical/watchlist note and verify Paladin listing before any trade.
+LAAC,alias_candidate,LAR,Lithium Argentina is tracked as LAR/LAR.TO in current public symbol search; validate venue and liquidity before trading.
+NGEX,alias_candidate,NGEX.TO,NGEx Minerals appears under NGEX.TO/NGXXF in public symbol search; validate venue and liquidity before trading.
+PMET,unresolved_exchange_alias,PMET.V,Patriot Battery Metals exchange suffix remains inconsistent across public sources; keep watchlist-only until a verifiable close is available.

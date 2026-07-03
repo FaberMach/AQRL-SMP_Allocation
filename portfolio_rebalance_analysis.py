@@ -20,7 +20,7 @@ OUTDIR = WORKDIR / "analysis_outputs"
 OUTDIR.mkdir(exist_ok=True)
 SSL_CONTEXT = ssl._create_unverified_context()
 
-PRICE_DATE = os.environ.get("PRICE_DATE", date.today().isoformat())
+PRICE_DATE = os.environ.get("PRICE_DATE", "2026-06-01")
 CASH_USD = 26854.02
 NAV_SOURCE_MAY7 = 234662.78
 ECOPET_BOND_FACE = 6000.0
@@ -203,12 +203,13 @@ def main() -> None:
             "fx_to_usd": f"{fx_rate:.6f}" if isinstance(fx_rate, (int, float)) and fx_rate is not None else "",
             "close_usd": money(usd_close),
             "date": fetched.get("date") or "",
+            "source": fetched.get("source") or "yahoo",
             "url": fetched.get("url") or "",
             "error": fetched.get("error") or "",
         })
 
     with (OUTDIR / "prices_2026-06-01.csv").open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["symbol", "close", "currency", "currency_raw", "fx_to_usd", "close_usd", "date", "url", "error"])
+        writer = csv.DictWriter(f, fieldnames=["symbol", "close", "currency", "currency_raw", "fx_to_usd", "close_usd", "date", "source", "url", "error"])
         writer.writeheader()
         writer.writerows(price_output_rows)
 

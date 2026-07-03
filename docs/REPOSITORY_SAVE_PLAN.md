@@ -3,14 +3,16 @@
 Destino solicitado:
 
 ```text
-https://github.com/FaberMach/SMP
+https://github.com/FaberMach/AQRL-SMP_Allocation
 ```
 
 ## Conteudo a versionar
 
 - `README.md`
 - `.gitignore`
+- `market_data.py`
 - `generate_dashboard_data.py`
+- `validate_project.py`
 - `portfolio_rebalance_analysis.py`
 - `analysis_outputs/`
 - `dashboard/`
@@ -27,10 +29,10 @@ https://github.com/FaberMach/SMP
 
 ```powershell
 git init
-git remote add origin https://github.com/FaberMach/SMP.git
+git remote add origin https://github.com/FaberMach/AQRL-SMP_Allocation.git
 git checkout -b main
 git add README.md .gitignore portfolio_rebalance_analysis.py analysis_outputs dashboard docs
-git commit -m "Add SMP portfolio rebalance dashboard"
+git commit -m "Add AQRL-SMP Allocation portfolio rebalance dashboard"
 git push -u origin main
 ```
 

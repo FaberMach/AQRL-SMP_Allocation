@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import ssl
+import csv
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
+from io import StringIO
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -28,6 +30,89 @@ def _unix(date_str: str) -> int:
     return int(datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc).timestamp())
 
 
+def _stooq_symbol(yahoo_symbol: str) -> str | None:
+    """Map simple US Yahoo tickers to Stooq symbols."""
+
+    if not yahoo_symbol or "=" in yahoo_symbol or "." in yahoo_symbol:
+        return None
+    return f"{yahoo_symbol.lower().replace('-', '.')}.us"
+
+
+def fetch_stooq_close(yahoo_symbol: str, date_str: str) -> dict:
+    """Fetch the latest Stooq close on or before the requested date for US tickers."""
+
+    symbol = _stooq_symbol(yahoo_symbol)
+    normalized_date = datetime.fromisoformat(date_str).date()
+    if not symbol:
+        return {
+            "symbol": yahoo_symbol,
+            "close": None,
+            "currency": None,
+            "date": None,
+            "url": "",
+            "error": "stooq fallback skipped for non-US/FX symbol",
+            "source": "stooq",
+        }
+
+    start = (normalized_date - timedelta(days=14)).strftime("%Y%m%d")
+    end = normalized_date.strftime("%Y%m%d")
+    url = f"https://stooq.com/q/d/l/?s={quote(symbol, safe='')}&d1={start}&d2={end}&i=d"
+    req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urlopen(req, timeout=20, context=SSL_CONTEXT) as resp:
+            text = resp.read().decode("utf-8")
+    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+        return {
+            "symbol": yahoo_symbol,
+            "close": None,
+            "currency": None,
+            "date": None,
+            "url": url,
+            "error": str(exc),
+            "source": "stooq",
+        }
+
+    best = None
+    try:
+        rows = csv.DictReader(StringIO(text))
+        for row in rows:
+            row_date = row.get("Date") or ""
+            close = row.get("Close") or ""
+            if not row_date or not close or row_date > normalized_date.isoformat():
+                continue
+            best = {
+                "symbol": yahoo_symbol,
+                "close": float(close),
+                "currency": "USD",
+                "date": row_date,
+                "url": url,
+                "error": "",
+                "source": "stooq",
+            }
+    except (TypeError, ValueError) as exc:
+        return {
+            "symbol": yahoo_symbol,
+            "close": None,
+            "currency": None,
+            "date": None,
+            "url": url,
+            "error": str(exc),
+            "source": "stooq",
+        }
+
+    if best:
+        return best
+    return {
+        "symbol": yahoo_symbol,
+        "close": None,
+        "currency": None,
+        "date": None,
+        "url": url,
+        "error": "no stooq close returned",
+        "source": "stooq",
+    }
+
+
 @lru_cache(maxsize=512)
 def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
     """Fetch the latest daily close on or before the requested date."""
@@ -44,6 +129,9 @@ def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
         with urlopen(req, timeout=20, context=SSL_CONTEXT) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+        fallback = fetch_stooq_close(yahoo_symbol, normalized_date)
+        if fallback["close"] is not None:
+            return fallback
         return {
             "symbol": yahoo_symbol,
             "close": None,
@@ -51,6 +139,7 @@ def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
             "date": None,
             "url": url,
             "error": str(exc),
+            "source": "yahoo",
         }
 
     result = (data.get("chart", {}).get("result") or [None])[0]
@@ -63,6 +152,7 @@ def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
             "date": None,
             "url": url,
             "error": str(err or "no result"),
+            "source": "yahoo",
         }
 
     timestamps = result.get("timestamp") or []
@@ -82,6 +172,7 @@ def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
             "date": dt,
             "url": url,
             "error": "",
+            "source": "yahoo",
         }
         if dt <= normalized_date:
             best = row
@@ -91,6 +182,10 @@ def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
     if best:
         return best
 
+    fallback = fetch_stooq_close(yahoo_symbol, normalized_date)
+    if fallback["close"] is not None:
+        return fallback
+
     return {
         "symbol": yahoo_symbol,
         "close": None,
@@ -98,6 +193,7 @@ def fetch_chart_close(yahoo_symbol: str, date_str: str) -> dict:
         "date": None,
         "url": url,
         "error": "no close returned",
+        "source": "yahoo",
     }
 
 

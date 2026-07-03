@@ -4,6 +4,8 @@ import shutil
 from pathlib import Path
 
 import generate_dashboard_data
+import generate_reports
+import prepare_public_site
 import validate_project
 
 
@@ -51,9 +53,11 @@ def copy_audit_exports() -> None:
 
 
 def main() -> None:
-    generate_dashboard_data.main()
+    data = generate_dashboard_data.build_data(write_outputs=True)
+    generate_reports.main(data)
     copy_audit_exports()
     sync_public_assets()
+    prepare_public_site.main(data)
     validate_project.main()
 
 

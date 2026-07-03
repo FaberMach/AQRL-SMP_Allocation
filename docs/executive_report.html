@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relatorio Executivo - Global Rebalance</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px auto; max-width: 1100px; line-height: 1.5; color: #17211c; }
+    h1, h2 { line-height: 1.15; }
+    h1 { font-size: 34px; }
+    h2 { margin-top: 30px; font-size: 22px; }
+    .bullet { margin: 6px 0; padding-left: 16px; }
+    .bullet::before { content: "• "; margin-left: -16px; color: #1f7a4d; }
+    pre { white-space: pre-wrap; background: #f4f6f2; border: 1px solid #d9dfd5; padding: 8px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+<h1>Relatorio Executivo - Global Rebalance</h1>
+
+<p class='bullet'>Data de precos: 2026-06-01</p>
+<p class='bullet'>Capital alvo: USD 256,024</p>
+<p class='bullet'>Valor atual estimado: USD 256,024</p>
+<p class='bullet'>Liquidez atual: USD 34,940 (13.7%)</p>
+<p class='bullet'>Liquidez alvo: 15.0%</p>
+<p class='bullet'>Cash alvo minimo: 5.0%; cash alvo do modelo: 8.0%</p>
+<p class='bullet'>Ativos modelados: 26; residuais: 4; watchlist: 34</p>
+
+<h2>Tese central</h2>
+
+<p>O modelo reduz concentracoes excessivas, preserva liquidez explicita e direciona risco para temas globais com convexidade: defesa/espaco, uranio/nuclear, minerais criticos e nucleo de qualidade.</p>
+
+<h2>Painel de risco</h2>
+
+<p class='bullet'>Top 5 no cenario base: 31.0%</p>
+<p class='bullet'>Exposicao nao USD no cenario base: 2.0%</p>
+<p class='bullet'>Liquidez atual versus alvo: 13.7% -&gt; 15.0%</p>
+<p class='bullet'>Residuais fora do modelo: 4</p>
+<p class='bullet'>Precificacoes com lacuna/erro no snapshot: 4</p>
+<p class='bullet'>Aliases acompanhados: 4; ainda sem confirmacao plena: 1</p>
+
+<h2>Gatilhos de revisao</h2>
+
+<p class='bullet'>Rebalancear se cash puro cair abaixo de 5% ou se cash + equivalentes cair abaixo de 12%.</p>
+<p class='bullet'>Revisar concentracao se o top 5 superar 35% do portfolio no cenario base.</p>
+<p class='bullet'>Travar novas compras em cauda especulativa se qualquer ticker residual sem tese passar de 1% do portfolio.</p>
+<p class='bullet'>Revalidar ticker, bolsa e liquidez antes de executar ativos marcados como alias_candidate ou unresolved_exchange_alias.</p>
+
+<h2>Maiores movimentos</h2>
+
+<pre>| Ativo | Tema | Atual | Alvo base | Trade base | Racional |</pre>
+<pre>| --- | --- | ---: | ---: | ---: | --- |</pre>
+<pre>| NVDA | Nucleo qualidade | USD 44,872 | USD 20,482 | USD -24,390 | Continuar exposto a lideranca em IA, porem com disciplina de tamanho. |</pre>
+<pre>| IBM | Nucleo qualidade | USD 32,042 | USD 10,241 | USD -21,801 | Reduzir ativo defensivo de menor convexidade para liberar capital para teses do estudo. |</pre>
+<pre>| JPM | Nucleo qualidade | USD 29,658 | USD 15,361 | USD -14,297 | Manter banco de qualidade, mas reduzir peso elevado e dependencia de financeiro tradicional. |</pre>
+<pre>| ASTS | Defesa e espaco | USD 0 | USD 10,241 | USD 10,241 | Iniciar exposicao a infraestrutura celular via satelite, uma das maiores optionalidades. |</pre>
+<pre>| NXE | Uranio e nuclear | USD 0 | USD 10,241 | USD 10,241 | Iniciar posicao em ativo tier-1 de uranio, destacado como qualidade geologica superior. |</pre>
+<pre>| QBTS | Cauda especulativa | USD 14,590 | USD 5,120 | USD -9,470 | Reduzir quantum para tamanho de cesta, diminuindo risco de diluicao e volatilidade extrema. |</pre>
+<pre>| XOVR | Liquidez | USD 2,058 | USD 10,241 | USD 8,183 | Aumentar equivalente defensivo para reduzir volatilidade sem sair de caixa. |</pre>
+<pre>| RKLB | Defesa e espaco | USD 7,343 | USD 15,361 | USD 8,018 | Aumentar uma das top 5 do estudo, com execucao operacional real em espaco e defesa. |</pre>
+
+<h2>Ordem operacional sugerida</h2>
+
+<p>### Levantar liquidez / reduzir excesso</p>
+
+<pre>| Ativo | Trade base | Racional |</pre>
+<pre>| --- | ---: | --- |</pre>
+<pre>| NVDA | USD -24,390 | Continuar exposto a lideranca em IA, porem com disciplina de tamanho. |</pre>
+<pre>| IBM | USD -21,801 | Reduzir ativo defensivo de menor convexidade para liberar capital para teses do estudo. |</pre>
+<pre>| JPM | USD -14,297 | Manter banco de qualidade, mas reduzir peso elevado e dependencia de financeiro tradicional. |</pre>
+<pre>| QBTS | USD -9,470 | Reduzir quantum para tamanho de cesta, diminuindo risco de diluicao e volatilidade extrema. |</pre>
+<pre>| MSFT | USD -7,665 | Preservar posicao core em cloud/IA, mas reduzir concentracao para financiar convexidade. |</pre>
+<pre>| NAUFF | USD -1,600 | Reduzir para posicao pequena, mantendo opcionalidade no ciclo nuclear sem concentrar risco. |</pre>
+
+<p>### Compras prioritarias</p>
+
+<pre>| Ativo | Trade base | Racional |</pre>
+<pre>| --- | ---: | --- |</pre>
+<pre>| ASTS | USD 10,241 | Iniciar exposicao a infraestrutura celular via satelite, uma das maiores optionalidades. |</pre>
+<pre>| NXE | USD 10,241 | Iniciar posicao em ativo tier-1 de uranio, destacado como qualidade geologica superior. |</pre>
+<pre>| RKLB | USD 8,018 | Aumentar uma das top 5 do estudo, com execucao operacional real em espaco e defesa. |</pre>
+<pre>| URA | USD 7,747 | Aumentar bloco de uranio pelo ciclo nuclear e pela demanda de energia para IA. |</pre>
+<pre>| SMR | USD 7,681 | Iniciar exposicao a SMRs, tese nuclear com opcionalidade estrategica. |</pre>
+<pre>| KTOS | USD 6,432 | Aumentar exposicao a drones, sistemas autonomos e guerra eletronica. |</pre>
+
+<h2>Cenarios versionados</h2>
+
+<p class='bullet'>`analysis_outputs/scenarios/study.json`</p>
+<p class='bullet'>`analysis_outputs/scenarios/defensive.json`</p>
+<p class='bullet'>`analysis_outputs/scenarios/convex.json`</p>
+
+<h2>Controles e validacao</h2>
+
+<p class='bullet'>`py run_pipeline.py` regenera dashboard, exports, cenarios e validacao.</p>
+<p class='bullet'>`py validate_project.py` confirma pesos em 100%, cash &gt;= 5% e sincronizacao dashboard/CSVs.</p>
+<p class='bullet'>A versao em `docs/` e sanitizada para publicacao; os textos extraidos dos PDFs ficam fora do upload remoto.</p>
+</body>
+</html>

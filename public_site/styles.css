@@ -1,0 +1,114 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+:root {
+  color-scheme: dark;
+  --page-bg: #07111b;
+  --page-bg-2: #0b1726;
+  --page-ink: #eff5ff;
+  --page-muted: #9ba8bb;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--page-ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(80, 162, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 88% 4%, rgba(208, 139, 46, 0.2), transparent 20%),
+    radial-gradient(circle at 80% 62%, rgba(126, 140, 255, 0.12), transparent 22%),
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-2) 52%, #060b12 100%);
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: auto;
+  width: 36rem;
+  height: 36rem;
+  border-radius: 50%;
+  filter: blur(28px);
+  opacity: 0.46;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::before {
+  top: -8rem;
+  left: -10rem;
+  background: radial-gradient(circle, rgba(74, 163, 223, 0.28), transparent 68%);
+}
+
+body::after {
+  right: -11rem;
+  top: 6rem;
+  background: radial-gradient(circle, rgba(208, 139, 46, 0.24), transparent 68%);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+code {
+  padding: 0.18rem 0.35rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+::selection {
+  background: rgba(74, 163, 223, 0.28);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

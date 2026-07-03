@@ -22,23 +22,23 @@ O projeto ja entrega o essencial:
 
 1. Automatizar o snapshot do dashboard
 
-   Implementado em `generate_dashboard_data.py`. O proximo passo e adicionar testes que comparem o JS gerado com os CSVs.
+   Implementado em `generate_dashboard_data.py`. A consistencia agora tambem e validada por `validate_project.py`.
 
 2. Separar fontes sensiveis
 
-   Os textos extraidos dos PDFs podem conter informacao privada. Para repositorio publico, considerar mover `extracted_text/` para armazenamento privado ou manter apenas um resumo sanitizado.
+   Executado para a publicacao: `extracted_text/` fica ignorado localmente e foi removido do fluxo de upload. A versao publicada em `docs/` usa apenas payload sanitizado.
 
 3. Converter moedas estrangeiras
 
-   Alguns ativos estao em CAD, AUD e GBp. A versao atual mostra a moeda original; uma melhoria seria converter tudo para USD com FX de 2026-06-01.
+   Implementado em `market_data.py`; o pipeline persiste `analysis_outputs/fx_rates_2026-06-01.csv`.
 
 4. Fortalecer precos indisponiveis
 
-   FCU, LAAC, NGEX e PMET nao retornaram preco verificavel nos tickers testados. Manter uma tabela de aliases e eventos corporativos melhora cobertura.
+   FCU, LAAC, NGEX e PMET nao retornaram preco verificavel nos tickers testados. A lista inicial esta registrada em `analysis_outputs/ticker_aliases.csv`.
 
 5. Criar testes leves
 
-   Adicionar validadores para:
+   Implementado em `validate_project.py` para:
 
    - Pesos alvo somarem 100%.
    - Cash alvo ficar acima de 5%.
@@ -47,17 +47,17 @@ O projeto ja entrega o essencial:
 
 6. Publicacao
 
-   Para acesso mobile mais facil, publicar como GitHub Pages privado/publico conforme a sensibilidade dos dados. Para uso local, manter `py -m http.server`.
+   A versao interativa para GitHub Pages fica em `public_site/`, usando o payload publico/sanitizado de `dashboard/public`. A publicacao navegavel agora aponta para o repositorio `FaberMach/AQRL-SMP_Allocation`.
 
 ## Roadmap sugerido
 
-- V1.1: teste automatizado de consistencia dos CSVs e dashboard.
-- V1.2: conversao FX para todos os ativos nao USD.
-- V1.3: versao sanitizada para GitHub Pages.
-- V1.4: integracao com uma fonte de aliases/eventos corporativos.
+- V1.1: resolver aliases de tickers sem preco verificavel.
+- V1.2: habilitar Pages tornando o repo publico ou usando outro host.
+- V1.3: integracao com uma fonte de aliases/eventos corporativos.
+- V1.4: exportar relatorio PDF executivo.
 
 ## Cuidados antes de publicar
 
-- Confirmar se o repositorio `FaberMach/SMP` sera publico ou privado.
+- Confirmar se o repositorio `FaberMach/AQRL-SMP_Allocation` sera publico ou privado.
 - Revisar se o extrato IBKR e os textos extraidos podem ser versionados.
 - Evitar commitar arquivos temporarios como `_tmp_cookie_copy/`, `upload_test/` e caches.

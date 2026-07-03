@@ -1,29 +1,29 @@
 window.PORTFOLIO_PUBLIC_DATA = {
   "meta": {
     "priceDate": "2026-06-01",
-    "targetCapital": 256024.18,
-    "currentPortfolioValue": 256024.18,
-    "modelPortfolioValue": 254724.57,
-    "residualValue": 1299.61,
-    "cashCurrent": 26854.02,
-    "liquidityCurrentValue": 34940.22,
+    "targetCapital": 100000.0,
+    "currentPortfolioValue": 100000.0,
+    "modelPortfolioValue": 100000.0,
+    "residualValue": 0.0,
+    "cashCurrent": 0.0,
+    "liquidityCurrentValue": 0.0,
     "cashTargetPct": 8.0,
     "cashMinimumPct": 5.0,
     "liquidityTargetPct": 15.0,
     "liquidityCurrentPct": 13.65,
-    "residualCount": 4,
+    "residualCount": 0,
     "modelAssetCount": 26,
-    "holdingsCount": 21,
-    "watchlistCount": 34,
+    "holdingsCount": 0,
+    "watchlistCount": 5,
     "marketPriceCount": 53,
     "fxRateCount": 3,
     "notes": [
-      "O modelo usa o fechamento mais recente do snapshot em 2026-06-01 e converte tudo para USD.",
-      "Cash, XOVR e bond ECOPET formam a faixa de liquidez/defesa.",
-      "Posicoes residuais fora do modelo aparecem separadas para nao mascarar risco."
+      "Versao publica normalizada: nao inclui valores reais, holdings, trades completos ou extratos.",
+      "Mostra cenarios, temas, cobertura de precos e top ideias em escala-base de USD 100.000."
     ],
     "baseTopFiveShare": 31.0,
-    "nonUsdShare": 2.0
+    "nonUsdShare": 2.0,
+    "publicSanitized": true
   },
   "scenarios": [
     {
@@ -353,5 +353,9 @@ window.PORTFOLIO_PUBLIC_DATA = {
       "status": "ok",
       "url": "https://query1.finance.yahoo.com/v8/finance/chart/SMR?period1=1779062400&period2=1780531200&interval=1d&events=history"
     }
-  ]
+  ],
+  "moves": [],
+  "holdings": [],
+  "residuals": [],
+  "watchlist": []
 };

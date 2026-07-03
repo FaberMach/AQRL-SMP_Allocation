@@ -78,6 +78,21 @@
       public: true,
       full: true,
     },
+    sectors: {
+      label: "Setores",
+      public: true,
+      full: true,
+    },
+    risk: {
+      label: "Risco",
+      public: true,
+      full: true,
+    },
+    simulator: {
+      label: "Simulador",
+      public: false,
+      full: true,
+    },
     universe: {
       label: "Universo",
       public: false,
@@ -108,6 +123,87 @@
     AUD: "#2bc6a4",
     GBP: "#d08b2e",
     Other: "#8f99a8",
+  };
+
+  const sectorBucketMeta = {
+    rare_earths: {
+      label: "Terras raras",
+      description: "Supply chain critica, geopolitica e rerating industrial.",
+      themeId: "minerals",
+    },
+    uranium: {
+      label: "Urânio",
+      description: "Ciclo nuclear, energia estrategica e hedge de longo prazo.",
+      themeId: "uranium",
+    },
+    copper_lithium: {
+      label: "Cobre e lítio",
+      description: "Eletrificacao, infraestrutura e metais de transicao.",
+      themeId: "minerals",
+    },
+    defense_space: {
+      label: "Defesa e espaço",
+      description: "Drones, satelites, sensoriamento e autonomia.",
+      themeId: "defense_space",
+    },
+    ai_biotech: {
+      label: "AI biotech",
+      description: "Biotech assistida por IA e opcionalidade de pesquisa.",
+      themeId: "tail",
+    },
+    nuclear: {
+      label: "Nuclear",
+      description: "SMRs e infraestrutura de energia limpa com opcionalidade.",
+      themeId: "uranium",
+    },
+    water: {
+      label: "Água",
+      description: "Tema defensivo ligado a escassez e infraestrutura.",
+      themeId: "quality",
+    },
+    agriculture: {
+      label: "Agricultura",
+      description: "Demanda estrutural por produtividade e insumos.",
+      themeId: "quality",
+    },
+    geral: {
+      label: "Geral",
+      description: "Bucket auxiliar para itens que nao se encaixam nos temas.",
+      themeId: "quality",
+    },
+  };
+
+  const riskProfiles = {
+    balanced: {
+      label: "Balanceado",
+      minCash: 5,
+      minLiquidity: 15,
+      maxTopFive: 35,
+      maxSingleName: 12,
+      maxNonUsd: 60,
+      maxSector: 28,
+      maxResiduals: 6,
+    },
+    defensive: {
+      label: "Defensivo",
+      minCash: 8,
+      minLiquidity: 18,
+      maxTopFive: 30,
+      maxSingleName: 10,
+      maxNonUsd: 55,
+      maxSector: 24,
+      maxResiduals: 4,
+    },
+    convex: {
+      label: "Convexo",
+      minCash: 4,
+      minLiquidity: 12,
+      maxTopFive: 38,
+      maxSingleName: 14,
+      maxNonUsd: 65,
+      maxSector: 32,
+      maxResiduals: 8,
+    },
   };
 
   const priorityPalette = {
@@ -516,6 +612,710 @@
         bondTargetPct: 0,
         themeMultipliers: {},
       };
+  }
+
+  function normalizeText(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function normalizeSymbolKey(value) {
+    return String(value ?? "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+  }
+
+  function normalizeCurrencyCode(value) {
+    const code = normalizeSymbolKey(value);
+    if (!code) {
+      return "USD";
+    }
+    if (code === "GBX" || code === "GBPX") {
+      return "GBP";
+    }
+    return code;
+  }
+
+  function parseFlexibleNumber(value) {
+    if (value === null || value === undefined) {
+      return 0;
+    }
+    const raw = String(value).trim();
+    if (!raw) {
+      return 0;
+    }
+    let cleaned = raw.replace(/[^0-9,.-]/g, "");
+    const commaCount = (cleaned.match(/,/g) || []).length;
+    const dotCount = (cleaned.match(/\./g) || []).length;
+    if (commaCount > 0 && dotCount > 0) {
+      if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
+        cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
+      } else {
+        cleaned = cleaned.replace(/,/g, "");
+      }
+    } else if (commaCount > 0) {
+      cleaned = cleaned.replace(/,/g, ".");
+    }
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function detectCsvDelimiter(headerLine) {
+    const semicolons = (headerLine.match(/;/g) || []).length;
+    const commas = (headerLine.match(/,/g) || []).length;
+    const tabs = (headerLine.match(/\t/g) || []).length;
+    if (tabs > commas && tabs > semicolons) {
+      return "\t";
+    }
+    if (semicolons > commas) {
+      return ";";
+    }
+    return ",";
+  }
+
+  function parseCsvLine(line, delimiter) {
+    const cells = [];
+    let current = "";
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '"') {
+        if (quoted && line[index + 1] === '"') {
+          current += '"';
+          index += 1;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (char === delimiter && !quoted) {
+        cells.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    cells.push(current);
+    return cells.map((cell) => cell.trim());
+  }
+
+  function normalizePortfolioHeader(value) {
+    const key = normalizeText(value).replace(/\s+/g, "_");
+    const headerMap = {
+      symbol: "symbol",
+      ticker: "symbol",
+      ativo: "symbol",
+      asset: "symbol",
+      codigo: "symbol",
+      code: "symbol",
+      name: "name",
+      nome: "name",
+      quantidade: "quantity",
+      qty: "quantity",
+      shares: "quantity",
+      units: "quantity",
+      unitsheld: "quantity",
+      price: "price",
+      preco: "price",
+      precounitario: "price",
+      current_price: "price",
+      last_price: "price",
+      market_price: "price",
+      value: "value",
+      valor: "value",
+      market_value: "value",
+      current_value: "value",
+      price_usd: "priceUsd",
+      current_price_usd: "priceUsd",
+      market_value_usd: "valueUsd",
+      current_value_usd: "valueUsd",
+      currency: "currency",
+      moeda: "currency",
+      ccy: "currency",
+      fx_to_usd: "fxToUsd",
+      fx: "fxToUsd",
+      sector: "sector",
+      setor: "sector",
+      category: "sector",
+      bucket: "sector",
+      tema: "sector",
+      thesis: "notes",
+      tese: "notes",
+      notes: "notes",
+      observacao: "notes",
+      observation: "notes",
+      price_date: "priceDate",
+      date: "priceDate",
+    };
+    return headerMap[key] || key;
+  }
+
+  function parsePortfolioCsv(text) {
+    const normalized = String(text || "")
+      .replace(/\r\n?/g, "\n")
+      .trim();
+    if (!normalized) {
+      return [];
+    }
+    const lines = normalized.split("\n").filter((line) => line.trim().length > 0);
+    if (!lines.length) {
+      return [];
+    }
+    const delimiter = detectCsvDelimiter(lines[0]);
+    const headers = parseCsvLine(lines[0], delimiter).map(normalizePortfolioHeader);
+    return lines.slice(1).map((line) => {
+      const values = parseCsvLine(line, delimiter);
+      const entry = {};
+      headers.forEach((header, index) => {
+        entry[header] = values[index] ?? "";
+      });
+      return entry;
+    });
+  }
+
+  function createPortfolioDraftRow(values = {}) {
+    return {
+      id:
+        values.id ||
+        `portfolio-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      symbol: values.symbol || values.ticker || values.asset || "",
+      name: values.name || values.symbol || values.ticker || "",
+      quantity: values.quantity ?? "",
+      price: values.price ?? "",
+      value: values.value ?? values.valueUsd ?? "",
+      currency: values.currency || "USD",
+      sector: values.sector || values.category || "",
+      notes: values.notes || "",
+      priceUsd: values.priceUsd ?? "",
+      valueUsd: values.valueUsd ?? "",
+      fxToUsd: values.fxToUsd ?? "",
+      priceDate: values.priceDate || "",
+    };
+  }
+
+  function coercePortfolioDraftRows(rows) {
+    return safeArray(rows)
+      .map((row) => createPortfolioDraftRow(row))
+      .filter((row) =>
+        [
+          row.symbol,
+          row.name,
+          row.quantity,
+          row.price,
+          row.value,
+          row.currency,
+          row.sector,
+          row.notes,
+        ].some((cell) => String(cell || "").trim().length > 0)
+      );
+  }
+
+  function buildPortfolioDraftRowsFromData(portfolioData) {
+    const rows = [];
+    const currentRows = [
+      ...safeArray(portfolioData.holdings),
+      ...safeArray(portfolioData.residuals),
+    ];
+    for (const row of currentRows) {
+      const currentValue = Number(row.currentValue) || 0;
+      if (currentValue <= 0) {
+        continue;
+      }
+      const currentPrice = Number(row.currentPrice) || 0;
+      rows.push(
+        createPortfolioDraftRow({
+          symbol: row.symbol || row.asset || "",
+          name: row.name || row.symbol || row.asset || "",
+          quantity: currentPrice > 0 ? currentValue / currentPrice : "",
+          price: currentPrice > 0 ? currentPrice : "",
+          value: currentValue,
+          currency: row.currency || "USD",
+          sector: row.themeLabel || row.category || row.themeId || "",
+          notes: row.thesis || row.bias || "",
+          priceUsd: Number(row.currentPriceUsd) || "",
+          valueUsd: currentValue,
+          fxToUsd: Number(row.fxToUsd) || "",
+          priceDate: row.priceDate || "",
+        })
+      );
+    }
+    return rows.sort((a, b) => parseFlexibleNumber(b.valueUsd || b.value) - parseFlexibleNumber(a.valueUsd || a.value));
+  }
+
+  function resolveSectorBucket(value) {
+    const text = normalizeText(value);
+    if (!text) {
+      return "geral";
+    }
+    if (text.includes("rare") || text.includes("terra") || text.includes("earth")) {
+      return "rare_earths";
+    }
+    if (text.includes("uran")) {
+      return "uranium";
+    }
+    if (text.includes("cobre") || text.includes("liti") || text.includes("miner")) {
+      return "copper_lithium";
+    }
+    if (text.includes("defens") || text.includes("espaco") || text.includes("space") || text.includes("satel")) {
+      return "defense_space";
+    }
+    if (text.includes("biotech") || text.includes("biotech") || text.includes("ai")) {
+      return "ai_biotech";
+    }
+    if (text.includes("nuclear") || text.includes("smr")) {
+      return "nuclear";
+    }
+    if (text.includes("agua") || text.includes("water")) {
+      return "water";
+    }
+    if (text.includes("agric")) {
+      return "agriculture";
+    }
+    return "geral";
+  }
+
+  function buildSectorInsights(portfolioData) {
+    const watchlistSource = safeArray(portfolioData.watchlist);
+    const fallbackSource = safeArray(portfolioData.study?.topIdeas).map((idea) => ({
+      ...idea,
+      studyBucket: idea.studyBucket || resolveSectorBucket(idea.themeLabel || idea.category || idea.symbol),
+      priority: idea.priority || "media",
+      upsidePct: idea.upsidePct || 0,
+      source: "Top ideas",
+    }));
+    const sourceRows = watchlistSource.length ? watchlistSource : fallbackSource;
+    const groups = new Map();
+
+    for (const row of sourceRows) {
+      const bucket = row.studyBucket || resolveSectorBucket(row.category || row.themeLabel || row.symbol);
+      const meta = sectorBucketMeta[bucket] || sectorBucketMeta.geral;
+      const priorityScore = row.priority === "alta" ? 3 : row.priority === "media" ? 2 : 1;
+      const upside = parseFlexibleNumber(row.upsidePct || row.upside_to_target_pct);
+      const score = priorityScore * 10 + upside + (row.symbol && safeArray(portfolioData.study?.topIdeas).some((idea) => idea.symbol === row.symbol) ? 5 : 0);
+      const current = groups.get(bucket) || {
+        id: bucket,
+        bucket,
+        label: meta.label,
+        description: meta.description,
+        accent: getStudyBucketAccent(bucket),
+        themeId: meta.themeId,
+        items: [],
+        totalScore: 0,
+        totalUpside: 0,
+      };
+      current.items.push({
+        symbol: row.symbol || "--",
+        name: row.name || row.symbol || "--",
+        upsidePct: upside,
+        priority: row.priority || "media",
+        thesis: row.thesis || "",
+        source: row.source || "",
+        currency: row.currency || "",
+        score,
+      });
+      current.totalScore += score;
+      current.totalUpside += upside;
+      groups.set(bucket, current);
+    }
+
+    return Array.from(groups.values())
+      .map((group) => {
+        group.items.sort((left, right) => right.score - left.score || right.upsidePct - left.upsidePct);
+        group.count = group.items.length;
+        group.averageUpside = group.count ? group.totalUpside / group.count : 0;
+        group.topPicks = group.items.slice(0, 3);
+        group.bestPick = group.topPicks[0] || null;
+        group.summary = group.topPicks
+          .map((item) => `${item.symbol} (${formatPct(item.upsidePct)})`)
+          .join(" · ");
+        return group;
+      })
+      .sort((left, right) => right.totalScore - left.totalScore || right.averageUpside - left.averageUpside);
+  }
+
+  function buildImportedPortfolioModel(portfolioData, draftRows, scenario, capital) {
+    const referenceMoves = safeArray(portfolioData.moves);
+    const referenceResiduals = safeArray(portfolioData.residuals);
+    const priceLookup = new Map();
+    for (const row of safeArray(portfolioData.marketPrices)) {
+      const symbolKey = normalizeSymbolKey(row.symbol || row.yahoo);
+      if (symbolKey) {
+        priceLookup.set(symbolKey, row);
+      }
+    }
+    const fxLookup = new Map();
+    for (const row of safeArray(portfolioData.fxRates)) {
+      const currency = normalizeCurrencyCode(row.currency);
+      if (currency) {
+        fxLookup.set(currency, Number(row.rate) || 1);
+      }
+    }
+    const moveLookup = new Map();
+    for (const move of referenceMoves) {
+      const key = normalizeSymbolKey(move.asset);
+      if (key) {
+        moveLookup.set(key, move);
+      }
+    }
+    const residualLookup = new Map();
+    for (const residual of referenceResiduals) {
+      const key = normalizeSymbolKey(residual.symbol);
+      if (key) {
+        residualLookup.set(key, residual);
+      }
+    }
+
+    const normalizedRows = coercePortfolioDraftRows(draftRows)
+      .map((row) => {
+        const symbolKey = normalizeSymbolKey(row.symbol || row.ticker || row.asset || row.name);
+        const moveTemplate = moveLookup.get(symbolKey);
+        const residualTemplate = residualLookup.get(symbolKey);
+        const priceTemplate = priceLookup.get(symbolKey);
+        const currencyRaw = row.currency || moveTemplate?.currencyRaw || residualTemplate?.currencyRaw || priceTemplate?.currency || "USD";
+        const currency = normalizeCurrencyCode(currencyRaw);
+        const fxRate =
+          parseFlexibleNumber(row.fxToUsd) ||
+          Number(moveTemplate?.fxToUsd) ||
+          Number(residualTemplate?.fxToUsd) ||
+          Number(priceTemplate?.fxToUsd) ||
+          fxLookup.get(currency) ||
+          1;
+        const quantity = parseFlexibleNumber(row.quantity);
+        const priceLocal =
+          parseFlexibleNumber(row.price) ||
+          parseFlexibleNumber(moveTemplate?.currentPrice) ||
+          parseFlexibleNumber(residualTemplate?.currentPrice) ||
+          parseFlexibleNumber(priceTemplate?.closeLocal);
+        const priceUsd =
+          parseFlexibleNumber(row.priceUsd) ||
+          parseFlexibleNumber(moveTemplate?.currentPriceUsd) ||
+          parseFlexibleNumber(residualTemplate?.currentPriceUsd) ||
+          parseFlexibleNumber(priceTemplate?.closeUsd);
+        const valueUsdInput =
+          parseFlexibleNumber(row.valueUsd) ||
+          parseFlexibleNumber(row.currentValueUsd);
+        const valueLocalInput =
+          parseFlexibleNumber(row.value) ||
+          parseFlexibleNumber(row.currentValue);
+        let currentValueUsd = 0;
+        if (valueUsdInput > 0) {
+          currentValueUsd = valueUsdInput;
+        } else if (quantity > 0 && priceUsd > 0) {
+          currentValueUsd = quantity * priceUsd;
+        } else if (quantity > 0 && priceLocal > 0) {
+          currentValueUsd = quantity * priceLocal * fxRate;
+        } else if (valueLocalInput > 0) {
+          currentValueUsd = valueLocalInput * fxRate;
+        } else if (moveTemplate) {
+          currentValueUsd = Number(moveTemplate.currentValue) || 0;
+        } else if (residualTemplate) {
+          currentValueUsd = Number(residualTemplate.currentValue) || 0;
+        }
+        const currentValueLocal =
+          valueLocalInput > 0
+            ? valueLocalInput
+            : quantity > 0 && priceLocal > 0
+              ? quantity * priceLocal
+              : fxRate > 0
+                ? currentValueUsd / fxRate
+                : currentValueUsd;
+        const currentPriceLocal =
+          priceLocal > 0
+            ? priceLocal
+            : quantity > 0 && currentValueLocal > 0
+              ? currentValueLocal / quantity
+              : parseFlexibleNumber(moveTemplate?.currentPrice) ||
+                parseFlexibleNumber(residualTemplate?.currentPrice) ||
+                parseFlexibleNumber(priceTemplate?.closeLocal);
+        const currentPriceUsd =
+          priceUsd > 0
+            ? priceUsd
+            : quantity > 0 && currentValueUsd > 0
+              ? currentValueUsd / quantity
+              : parseFlexibleNumber(moveTemplate?.currentPriceUsd) ||
+                parseFlexibleNumber(residualTemplate?.currentPriceUsd) ||
+                parseFlexibleNumber(priceTemplate?.closeUsd) ||
+                (currentPriceLocal > 0 ? currentPriceLocal * fxRate : 0);
+        const sectorBucket = resolveSectorBucket(row.sector || row.category || row.notes || moveTemplate?.themeLabel || residualTemplate?.themeLabel);
+        const sectorMeta = sectorBucketMeta[sectorBucket] || sectorBucketMeta.geral;
+
+        return {
+          id: row.id,
+          symbol: symbolKey || normalizeSymbolKey(row.name) || row.name || "",
+          name: row.name || moveTemplate?.asset || residualTemplate?.symbol || symbolKey,
+          quantity,
+          currentPriceLocal,
+          currentPriceUsd,
+          currentValueLocal,
+          currentValueUsd,
+          currency,
+          currencyRaw,
+          fxToUsd: fxRate,
+          sectorBucket,
+          sectorLabel: sectorMeta.label,
+          notes: row.notes || "",
+          sourceSymbol: symbolKey,
+        };
+      })
+      .filter((row) => row.symbol && (row.currentValueUsd > 0 || row.quantity > 0 || row.currentPriceLocal > 0 || row.currentPriceUsd > 0));
+
+    const normalizedLookup = new Map();
+    for (const row of normalizedRows) {
+      const key = normalizeSymbolKey(row.symbol);
+      if (!key) {
+        continue;
+      }
+      const existing = normalizedLookup.get(key);
+      if (existing) {
+        existing.quantity += row.quantity;
+        existing.currentValueUsd += row.currentValueUsd;
+        existing.currentValueLocal += row.currentValueLocal;
+        existing.currentPriceLocal = row.currentPriceLocal || existing.currentPriceLocal;
+        existing.currentPriceUsd = row.currentPriceUsd || existing.currentPriceUsd;
+        existing.notes = existing.notes || row.notes;
+        existing.sectorBucket = existing.sectorBucket || row.sectorBucket;
+        existing.sectorLabel = existing.sectorLabel || row.sectorLabel;
+      } else {
+        normalizedLookup.set(key, { ...row });
+      }
+    }
+
+    const uploadedRows = Array.from(normalizedLookup.values());
+    const uploadedValue = uploadedRows.reduce((sum, row) => sum + (Number(row.currentValueUsd) || 0), 0);
+    const uploadedCurrentLiquidityValue = uploadedRows.reduce((sum, row) => {
+      return row.symbol === "Cash" || row.symbol === "XOVR" || row.symbol === "ECOPET_BOND"
+        ? sum + (Number(row.currentValueUsd) || 0)
+        : sum;
+    }, 0);
+    const uploadedCashValue = uploadedRows.reduce((sum, row) => {
+      return row.symbol === "Cash" ? sum + (Number(row.currentValueUsd) || 0) : sum;
+    }, 0);
+
+    const baseRows = referenceMoves.map((move) => {
+      const row = normalizedLookup.get(normalizeSymbolKey(move.asset));
+      if (!row) {
+        return {
+          ...move,
+          currentValue: 0,
+          currentValueLocal: 0,
+          currentPrice: Number(move.currentPrice) || 0,
+          currentPriceUsd: Number(move.currentPriceUsd) || 0,
+          currency: move.currency,
+          currencyRaw: move.currencyRaw,
+          fxToUsd: Number(move.fxToUsd) || 1,
+        };
+      }
+      return {
+        ...move,
+        currentValue: row.currentValueUsd,
+        currentValueLocal: row.currentValueLocal,
+        currentPrice: row.currentPriceLocal,
+        currentPriceUsd: row.currentPriceUsd,
+        currency: row.currency,
+        currencyRaw: row.currencyRaw,
+        fxToUsd: row.fxToUsd,
+        priceError: "",
+      };
+    });
+
+    const baseLookup = new Set(baseRows.map((row) => normalizeSymbolKey(row.asset)));
+    const residualRows = [];
+    for (const row of uploadedRows) {
+      if (baseLookup.has(normalizeSymbolKey(row.symbol))) {
+        continue;
+      }
+      const residualTemplate = residualLookup.get(normalizeSymbolKey(row.symbol));
+      const sectorMeta = sectorBucketMeta[row.sectorBucket] || sectorBucketMeta.geral;
+      residualRows.push({
+        ...(residualTemplate || {}),
+        symbol: row.symbol,
+        name: row.name || residualTemplate?.name || row.symbol,
+        themeId: residualTemplate?.themeId || sectorMeta.themeId,
+        themeLabel: residualTemplate?.themeLabel || sectorMeta.label,
+        category: row.sectorLabel || residualTemplate?.category || sectorMeta.label,
+        region: residualTemplate?.region || "Other",
+        currency: row.currency,
+        currencyRaw: row.currencyRaw,
+        fxToUsd: row.fxToUsd,
+        currentPrice: row.currentPriceLocal,
+        currentPriceUsd: row.currentPriceUsd,
+        targetPrice: residualTemplate?.targetPrice || 0,
+        targetPriceUsd: residualTemplate?.targetPriceUsd || 0,
+        currentValueLocal: row.currentValueLocal,
+        currentValue: row.currentValueUsd,
+        baseWeightPct: 0,
+        baseTargetValue: 0,
+        baseTradeValue: 0,
+        upsidePct: residualTemplate?.upsidePct || 0,
+        bias: row.notes || residualTemplate?.bias || "",
+        thesis: row.notes || residualTemplate?.thesis || "Posição importada manualmente.",
+        fixed: false,
+        priceDate: residualTemplate?.priceDate || row.priceDate || portfolioData.meta?.priceDate || "",
+        priceError: "",
+      });
+    }
+
+    const simMeta = {
+      ...portfolioData.meta,
+      currentPortfolioValue: uploadedValue,
+      holdingsCount: uploadedRows.length,
+      residualCount: residualRows.length,
+      residualValue: residualRows.reduce((sum, row) => sum + (Number(row.currentValue) || 0), 0),
+      liquidityCurrentValue: uploadedCurrentLiquidityValue,
+      liquidityCurrentPct: uploadedValue > 0 ? (uploadedCurrentLiquidityValue / uploadedValue) * 100 : 0,
+      cashCurrent: uploadedCashValue,
+    };
+    const simData = {
+      ...portfolioData,
+      meta: simMeta,
+      moves: baseRows,
+      residuals: residualRows,
+    };
+    const simulationCapital =
+      Number(capital) > 0 ? Number(capital) : uploadedValue > 0 ? uploadedValue : Number(portfolioData.meta?.targetCapital) || 0;
+    const model = buildModel(simData, scenario, simulationCapital);
+
+    return {
+      model,
+      uploadedRows,
+      uploadedValue,
+      uploadedCurrentLiquidityValue,
+      uploadedCashValue,
+      importedCount: uploadedRows.length,
+      baseMatchedCount: uploadedRows.length - residualRows.length,
+      residualCount: residualRows.length,
+      residualRows,
+      simulationCapital,
+      unmappedSymbols: residualRows.map((row) => row.symbol),
+    };
+  }
+
+  function evaluateRiskLimit(value, limit, direction = "max") {
+    if (!Number.isFinite(value) || !Number.isFinite(limit) || limit <= 0) {
+      return { state: "neutral", gap: 0 };
+    }
+    if (direction === "min") {
+      if (value >= limit) {
+        return { state: "ok", gap: value - limit };
+      }
+      if (value >= limit * 0.9) {
+        return { state: "watch", gap: value - limit };
+      }
+      return { state: "breach", gap: value - limit };
+    }
+    if (value <= limit) {
+      return { state: "ok", gap: limit - value };
+    }
+    if (value <= limit * 1.1) {
+      return { state: "watch", gap: limit - value };
+    }
+    return { state: "breach", gap: limit - value };
+  }
+
+  function buildRiskChecks(model, snapshot, policy) {
+    const rules = policy || riskProfiles.balanced;
+    const currentLiquidityPct = Number(snapshot.currentLiquidityPct ?? snapshot.liquidityCurrentPct ?? model.liquidityTargetPct) || 0;
+    const cashPct = Number(snapshot.cashPct ?? snapshot.currentCashPct ?? 0) || 0;
+    const largestName = safeArray(model.modelRows)
+      .filter((row) => !row.fixed)
+      .reduce((max, row) => Math.max(max, Number(row.targetWeight) || 0), 0);
+    const largestSector = safeArray(model.themeRows)
+      .filter((row) => row.key !== "residual")
+      .reduce((max, row) => Math.max(max, Number(row.targetWeight) || 0), 0);
+    const checks = [
+      {
+        key: "cash",
+        label: "Cash mínimo",
+        value: cashPct,
+        limit: rules.minCash,
+        direction: "min",
+        detail: "Garanta caixa suficiente para rebalancear sem depender de vendas forçadas.",
+      },
+      {
+        key: "liquidity",
+        label: "Liquidez total",
+        value: currentLiquidityPct,
+        limit: rules.minLiquidity,
+        direction: "min",
+        detail: "Inclui Cash, XOVR e ECOPET_BOND como corredor de defesa.",
+      },
+      {
+        key: "topFive",
+        label: "Top 5",
+        value: Number(model.topFiveShare) || 0,
+        limit: rules.maxTopFive,
+        direction: "max",
+        detail: "Controle a concentração dos cinco maiores nomes do livro.",
+      },
+      {
+        key: "largestName",
+        label: "Maior nome",
+        value: largestName,
+        limit: rules.maxSingleName,
+        direction: "max",
+        detail: "Evita que uma única tese domine o orçamento de risco.",
+      },
+      {
+        key: "nonUsd",
+        label: "Não-USD",
+        value: Number(model.nonUsdShare) || 0,
+        limit: rules.maxNonUsd,
+        direction: "max",
+        detail: "Protege a carteira contra ruído cambial excessivo.",
+      },
+      {
+        key: "largestSector",
+        label: "Maior setor",
+        value: largestSector,
+        limit: rules.maxSector,
+        direction: "max",
+        detail: "Evita superconcentração em um tema só, mesmo quando a tese é forte.",
+      },
+      {
+        key: "residuals",
+        label: "Residuais",
+        value: Number(model.residualCount) || 0,
+        limit: rules.maxResiduals,
+        direction: "max",
+        detail: "Mantém o bloco fora do modelo sob controle para nao mascarar risco.",
+      },
+    ];
+    return checks.map((check) => ({
+      ...check,
+      result: evaluateRiskLimit(check.value, check.limit, check.direction),
+    }));
+  }
+
+  function buildRiskRecommendations(checks) {
+    const notes = [];
+    const has = (key, state = "breach") => checks.some((check) => check.key === key && check.result.state === state);
+    if (has("cash")) {
+      notes.push("Reforcar caixa ou reduzir cauda ate voltar ao piso de liquidez.");
+    }
+    if (has("liquidity")) {
+      notes.push("Preservar o corredor defensivo de liquidez antes de aumentar o beta.");
+    }
+    if (has("topFive")) {
+      notes.push("Cortar o excesso do top 5 e redistribuir em temas menos correlacionados.");
+    }
+    if (has("largestName")) {
+      notes.push("Diminuir o maior nome isolado para aliviar risco idiossincratico.");
+    }
+    if (has("nonUsd")) {
+      notes.push("Reduzir exposição cambial fora de USD ou usar hedge parcial.");
+    }
+    if (has("largestSector")) {
+      notes.push("Rebalancear o setor dominante para melhorar a diversificacao tematica.");
+    }
+    if (has("residuals")) {
+      notes.push("Limpar ou isolar residuais para nao mascarar a leitura do modelo.");
+    }
+    if (!notes.length) {
+      notes.push("A carteira respeita os limites principais e pode seguir para o cenário selecionado.");
+    }
+    return notes;
   }
 
   function TabPanel(props) {
@@ -1145,6 +1945,304 @@
     `;
   }
 
+  function PortfolioDraftRow({ row, index, onChange, onRemove, onDuplicate }) {
+    return html`
+      <${Paper}
+        elevation=${0}
+        sx=${{
+          p: 2,
+          borderRadius: 4,
+          border: "1px solid rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.03)",
+        }}
+      >
+        <${Stack} spacing=${1.5}>
+          <${Stack} direction="row" justifyContent="space-between" alignItems="center" spacing=${2}>
+            <${Box}>
+              <${Typography} sx=${{ fontWeight: 700 }}>
+                Linha ${index + 1}
+              </${Typography}>
+              <${Typography} variant="caption" color="text.secondary">
+                Edite por ticker, quantidade, preço local ou valor em USD.
+              </${Typography}>
+            </${Box}>
+            <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+              <${Button} size="small" variant="outlined" onClick=${onDuplicate}>Duplicar</${Button}>
+              <${Button} size="small" color="error" variant="outlined" onClick=${onRemove}>
+                Remover
+              </${Button}>
+            </${Stack}>
+          </${Stack}>
+
+          <${Grid} container spacing=${1.25}>
+            <${Grid} item xs=${12} sm=${6} md=${2.4}>
+              <${TextField}
+                label="Ticker"
+                value=${row.symbol}
+                onChange=${(event) => onChange("symbol", event.target.value)}
+                fullWidth=${true}
+                size="small"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${2.4}>
+              <${TextField}
+                label="Nome"
+                value=${row.name}
+                onChange=${(event) => onChange("name", event.target.value)}
+                fullWidth=${true}
+                size="small"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${1.8}>
+              <${TextField}
+                label="Quantidade"
+                value=${row.quantity}
+                onChange=${(event) => onChange("quantity", event.target.value)}
+                fullWidth=${true}
+                size="small"
+                inputMode="decimal"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${1.8}>
+              <${TextField}
+                label="Preço"
+                value=${row.price}
+                onChange=${(event) => onChange("price", event.target.value)}
+                fullWidth=${true}
+                size="small"
+                inputMode="decimal"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${1.8}>
+              <${TextField}
+                label="Valor"
+                value=${row.value}
+                onChange=${(event) => onChange("value", event.target.value)}
+                fullWidth=${true}
+                size="small"
+                inputMode="decimal"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${1.8}>
+              <${TextField}
+                label="Moeda"
+                value=${row.currency}
+                onChange=${(event) => onChange("currency", event.target.value)}
+                fullWidth=${true}
+                size="small"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${3}>
+              <${TextField}
+                label="Setor"
+                value=${row.sector}
+                onChange=${(event) => onChange("sector", event.target.value)}
+                fullWidth=${true}
+                size="small"
+              />
+            </${Grid}>
+            <${Grid} item xs=${12} sm=${6} md=${9}>
+              <${TextField}
+                label="Notas / tese"
+                value=${row.notes}
+                onChange=${(event) => onChange("notes", event.target.value)}
+                fullWidth=${true}
+                size="small"
+                multiline=${true}
+                minRows=${2}
+              />
+            </${Grid}>
+          </${Grid}>
+        </${Stack}>
+      </${Paper}>
+    `;
+  }
+
+  function SectorGroupCard({ group, selected, onClick }) {
+    const accent = group.accent || getStudyBucketAccent(group.bucket);
+    return html`
+      <${Card}
+        elevation=${0}
+        onClick=${onClick}
+        sx=${{
+          height: "100%",
+          cursor: "pointer",
+          borderRadius: 4,
+          border: selected ? `1px solid ${accent}88` : "1px solid rgba(255,255,255,0.08)",
+          background: selected
+            ? `linear-gradient(180deg, ${accent}18 0%, rgba(10,16,28,0.88) 100%)`
+            : "linear-gradient(180deg, rgba(12,20,34,0.98) 0%, rgba(10,16,28,0.84) 100%)",
+          transition: "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
+          boxShadow: selected ? `0 20px 55px ${accent}24` : "0 20px 50px rgba(0,0,0,0.24)",
+          "&:hover": {
+            transform: "translateY(-2px)",
+          },
+        }}
+      >
+        <${CardContent} sx=${{ p: 2.2, height: "100%" }}>
+          <${Stack} spacing=${1.2}>
+            <${Stack} direction="row" justifyContent="space-between" alignItems="flex-start" spacing=${2}>
+              <${Box}>
+                <${Typography}
+                  variant="h6"
+                  sx=${{
+                    fontWeight: 700,
+                    fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
+                    letterSpacing: "-0.03em",
+                  }}
+                >
+                  ${group.label}
+                </${Typography}>
+                <${Typography} variant="body2" color="text.secondary" sx=${{ mt: 0.2, lineHeight: 1.5 }}>
+                  ${group.description}
+                </${Typography}>
+              </${Box}>
+              <${Chip}
+                size="small"
+                label=${group.count}
+                sx=${{
+                  bgcolor: `${accent}22`,
+                  color: accent,
+                  border: `1px solid ${accent}55`,
+                  fontWeight: 700,
+                }}
+              />
+            </${Stack}>
+
+            <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+              <${Chip}
+                size="small"
+                label=${`${formatPct(group.averageUpside || 0)} upside médio`}
+                sx=${{
+                  bgcolor: "rgba(74,163,223,0.12)",
+                  color: "#9dd4ff",
+                  border: "1px solid rgba(74,163,223,0.35)",
+                  fontWeight: 700,
+                }}
+              />
+              <${Chip}
+                size="small"
+                label=${group.bestPick ? `Topo: ${group.bestPick.symbol}` : "Sem picks"}
+                sx=${{
+                  bgcolor: "rgba(255,255,255,0.06)",
+                  color: "text.secondary",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  fontWeight: 700,
+                }}
+              />
+            </${Stack}>
+
+            <${Box}>
+              <${Typography} variant="caption" color="text.secondary" sx=${{ display: "block", mb: 0.75 }}>
+                Top picks
+              </${Typography}>
+              <${Stack} spacing=${0.8}>
+                ${group.topPicks.map(
+                  (item) => html`
+                    <${Stack}
+                      key=${item.symbol}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      spacing=${1}
+                      sx=${{
+                        py: 0.65,
+                        px: 1,
+                        borderRadius: 2,
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <${Box} sx=${{ minWidth: 0 }}>
+                        <${Typography} sx=${{ fontWeight: 700, lineHeight: 1.2 }}>
+                          ${item.symbol}
+                        </${Typography}>
+                        <${Typography} variant="caption" color="text.secondary" sx=${{ display: "block" }}>
+                          ${item.name}
+                        </${Typography}>
+                      </${Box}>
+                      <${Box} sx=${{ textAlign: "right" }}>
+                        <${Typography} sx=${{ fontWeight: 700, color: accent }}>
+                          ${formatPct(item.upsidePct)}
+                        </${Typography}>
+                        <${Typography} variant="caption" color="text.secondary">
+                          ${formatPriority(item.priority)}
+                        </${Typography}>
+                      </${Box}>
+                    </${Stack}>
+                  `
+                )}
+              </${Stack}>
+            </${Box}>
+          </${Stack}>
+        </${CardContent}>
+      </${Card}>
+    `;
+  }
+
+  function RiskCheckCard({ check }) {
+    const tone = {
+      ok: { color: "#46d1be", background: "rgba(70,209,190,0.14)" },
+      watch: { color: "#d08b2e", background: "rgba(208,139,46,0.14)" },
+      breach: { color: "#ff7a59", background: "rgba(255,122,89,0.14)" },
+      neutral: { color: "#8f99a8", background: "rgba(143,153,168,0.14)" },
+    }[check.result.state] || {
+      color: "#8f99a8",
+      background: "rgba(143,153,168,0.14)",
+    };
+
+    return html`
+      <${Paper}
+        elevation=${0}
+        sx=${{
+          p: 2,
+          borderRadius: 4,
+          border: `1px solid ${tone.color}55`,
+          background: "rgba(255,255,255,0.03)",
+        }}
+      >
+        <${Stack} spacing=${1}>
+          <${Stack} direction="row" justifyContent="space-between" alignItems="center" spacing=${2}>
+            <${Typography} sx=${{ fontWeight: 700 }}>
+              ${check.label}
+            </${Typography}>
+            <${Chip}
+              size="small"
+              label=${check.result.state === "ok" ? "OK" : check.result.state === "watch" ? "Atenção" : check.result.state === "breach" ? "Breach" : "N/A"}
+              sx=${{
+                bgcolor: tone.background,
+                color: tone.color,
+                border: `1px solid ${tone.color}55`,
+                fontWeight: 700,
+              }}
+            />
+          </${Stack}>
+          <${Typography} variant="body2" color="text.secondary" sx=${{ lineHeight: 1.5 }}>
+            ${check.detail}
+          </${Typography}>
+          <${Stack} direction="row" justifyContent="space-between" spacing=${2}>
+            <${Box}>
+              <${Typography} variant="caption" color="text.secondary" sx=${{ display: "block" }}>
+                Atual
+              </${Typography}>
+              <${Typography} sx=${{ fontWeight: 700 }}>
+                ${formatPct(check.value)}
+              </${Typography}>
+            </${Box}>
+            <${Box} sx=${{ textAlign: "right" }}>
+              <${Typography} variant="caption" color="text.secondary" sx=${{ display: "block" }}>
+                Limite
+              </${Typography}>
+              <${Typography} sx=${{ fontWeight: 700 }}>
+                ${formatPct(check.limit)}
+              </${Typography}>
+            </${Box}>
+          </${Stack}>
+        </${Stack}>
+      </${Paper}>
+    `;
+  }
+
   function App() {
     const defaultScenario = resolveDefaultScenario(data);
     const stored = readStoredPrefs();
@@ -1154,6 +2252,16 @@
     const initialCapital = Number.isFinite(Number(stored.capital)) && Number(stored.capital) > 0
       ? Number(stored.capital)
       : defaultCapital;
+    const initialPortfolioRows = coercePortfolioDraftRows(stored.portfolioRows).length
+      ? coercePortfolioDraftRows(stored.portfolioRows)
+      : buildPortfolioDraftRowsFromData(data);
+    const initialRiskProfileId = riskProfiles[stored.riskProfileId]
+      ? stored.riskProfileId
+      : initialScenarioId === "defensive"
+        ? "defensive"
+        : initialScenarioId === "convex"
+          ? "convex"
+          : "balanced";
     const availableTabs = Object.entries(tabConfig)
       .filter(([key, cfg]) => cfg[view])
       .map(([key, cfg]) => ({ id: key, label: cfg.label }));
@@ -1166,11 +2274,141 @@
         ? stored.filter
         : "Todos",
       sort: ["absTrade", "targetWeight", "theme"].includes(stored.sort) ? stored.sort : "absTrade",
+      portfolioRows: initialPortfolioRows,
+      portfolioCapital:
+        Number.isFinite(Number(stored.portfolioCapital)) && Number(stored.portfolioCapital) > 0
+          ? Number(stored.portfolioCapital)
+          : initialCapital,
+      riskProfileId: initialRiskProfileId,
+      selectedSector: stored.selectedSector || "",
     });
 
     const scenario = resolveScenario(data, prefs.scenarioId);
     const model = React.useMemo(() => buildModel(data, scenario, prefs.capital), [scenario, prefs.capital]);
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+    const sectorInsights = React.useMemo(() => buildSectorInsights(data), []);
+    const portfolioRows = React.useMemo(() => coercePortfolioDraftRows(prefs.portfolioRows), [prefs.portfolioRows]);
+    const importedSimulation = React.useMemo(
+      () => buildImportedPortfolioModel(data, portfolioRows, scenario, prefs.portfolioCapital),
+      [portfolioRows, scenario, prefs.portfolioCapital]
+    );
+    const riskPolicy = riskProfiles[prefs.riskProfileId] || riskProfiles.balanced;
+    const portfolioRiskChecks = React.useMemo(
+      () =>
+        buildRiskChecks(
+          importedSimulation.model,
+          {
+            cashPct:
+              importedSimulation.uploadedValue > 0
+                ? (importedSimulation.uploadedCashValue / importedSimulation.uploadedValue) * 100
+                : Number(data.meta?.currentPortfolioValue) > 0
+                  ? ((Number(data.meta?.cashCurrent) || 0) / Number(data.meta?.currentPortfolioValue)) * 100
+                  : Number(data.meta?.cashTargetPct) || 0,
+            currentLiquidityPct:
+              importedSimulation.uploadedValue > 0
+                ? (importedSimulation.uploadedCurrentLiquidityValue / importedSimulation.uploadedValue) * 100
+                : Number(data.meta?.liquidityCurrentPct) || importedSimulation.model.liquidityTargetPct,
+          },
+          riskPolicy
+        ),
+      [importedSimulation, riskPolicy]
+    );
+    const riskRecommendations = React.useMemo(
+      () => buildRiskRecommendations(portfolioRiskChecks),
+      [portfolioRiskChecks]
+    );
+    const selectedSectorId =
+      prefs.selectedSector && sectorInsights.some((group) => group.bucket === prefs.selectedSector)
+        ? prefs.selectedSector
+      : sectorInsights[0]?.bucket || "geral";
+    const activeSectorGroup = sectorInsights.find((group) => group.bucket === selectedSectorId) || sectorInsights[0] || null;
+    const importedTradeRows = importedSimulation.model.tradeRows
+      .filter((row) => Math.abs(Number(row.absTrade) || 0) > 0.01)
+      .slice()
+      .sort((a, b) => Number(b.absTrade) - Number(a.absTrade));
+    const [portfolioNotice, setPortfolioNotice] = React.useState("");
+
+    const updatePortfolioRows = (nextRows) => {
+      setPrefs((current) => ({
+        ...current,
+        portfolioRows: coercePortfolioDraftRows(nextRows),
+      }));
+    };
+
+    const patchPortfolioRow = (index, field, value) => {
+      const nextRows = portfolioRows.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [field]: value } : row
+      );
+      updatePortfolioRows(nextRows);
+    };
+
+    const duplicatePortfolioRow = (index) => {
+      const row = portfolioRows[index];
+      if (!row) {
+        return;
+      }
+      const nextRows = [
+        ...portfolioRows.slice(0, index + 1),
+        createPortfolioDraftRow(row),
+        ...portfolioRows.slice(index + 1),
+      ];
+      updatePortfolioRows(nextRows);
+      setPortfolioNotice("Linha duplicada com sucesso.");
+    };
+
+    const removePortfolioRow = (index) => {
+      const nextRows = portfolioRows.filter((_, rowIndex) => rowIndex !== index);
+      updatePortfolioRows(nextRows.length ? nextRows : [createPortfolioDraftRow()]);
+      setPortfolioNotice("Linha removida do simulador.");
+    };
+
+    const addPortfolioRow = () => {
+      updatePortfolioRows([...portfolioRows, createPortfolioDraftRow()]);
+      setPortfolioNotice("Nova linha adicionada ao simulador.");
+    };
+
+    const loadCurrentPortfolio = () => {
+      const rows = buildPortfolioDraftRowsFromData(data);
+      updatePortfolioRows(rows.length ? rows : [createPortfolioDraftRow()]);
+      setPrefs((current) => ({
+        ...current,
+        portfolioCapital: Number(data.meta?.currentPortfolioValue) || current.portfolioCapital || current.capital,
+      }));
+      setPortfolioNotice("Carteira atual carregada para simulação.");
+    };
+
+    const clearPortfolioRows = () => {
+      updatePortfolioRows([createPortfolioDraftRow()]);
+      setPortfolioNotice("Editor limpo para entrada manual.");
+    };
+
+    const handlePortfolioCsvUpload = (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      file
+        .text()
+        .then((text) => {
+          const rows = parsePortfolioCsv(text).map((row) => createPortfolioDraftRow(row));
+          if (!rows.length) {
+            setPortfolioNotice(`Nenhuma linha valida foi encontrada em ${file.name}.`);
+            return;
+          }
+          const preview = buildImportedPortfolioModel(data, rows, scenario, prefs.portfolioCapital);
+          updatePortfolioRows(rows);
+          setPrefs((current) => ({
+            ...current,
+            portfolioCapital: preview.uploadedValue || Number(data.meta?.currentPortfolioValue) || current.portfolioCapital || current.capital,
+            tab: "simulator",
+          }));
+          setPortfolioNotice(`Arquivo ${file.name} importado com ${rows.length} linhas.`);
+        })
+        .catch((error) => {
+          setPortfolioNotice(`Falha ao ler ${file.name}: ${error?.message || error}`);
+        });
+    };
 
     React.useEffect(() => {
       if (!availableTabs.some((tab) => tab.id === prefs.tab)) {
@@ -1185,8 +2423,12 @@
         tab: prefs.tab,
         filter: prefs.filter,
         sort: prefs.sort,
+        portfolioRows: prefs.portfolioRows,
+        portfolioCapital: prefs.portfolioCapital,
+        riskProfileId: prefs.riskProfileId,
+        selectedSector: selectedSectorId,
       });
-    }, [prefs]);
+    }, [prefs, selectedSectorId]);
 
     React.useEffect(() => {
       const titleBase = view === "public" ? "Public Snapshot" : "Dashboard";
@@ -1216,9 +2458,11 @@
     ];
     if (view === "full") {
       summaryChips.push(`${integerFormatter.format(model.residualCount)} residuals`);
+      summaryChips.push(`${integerFormatter.format(portfolioRows.length)} linhas carteira`);
     } else if (safeArray(data.study?.topIdeas).length) {
       summaryChips.push(`${integerFormatter.format(topIdeas.length)} top ideas`);
     }
+    summaryChips.push(`${integerFormatter.format(sectorInsights.length)} setores`);
 
     const metricCards = view === "full"
       ? [
@@ -1424,10 +2668,10 @@
                         variant="body1"
                         color="text.secondary"
                         sx=${{ mt: 1.8, maxWidth: 920, lineHeight: 1.75 }}
-                      >
+                        >
                         ${view === "public"
                           ? "A camada publica mostra resumo executivo, temas, precos globais e as cinco ideias mais convexas, sem expor holdings, residuals ou o livro completo."
-                          : "A interface combina componentes de React e Material UI para rodar o modelo do estudo, monitorar precos globais de acoes, controlar cenarios e revisar os trades com hierarquia visual mais clara."}
+                          : "Workspace unificado para rodar o modelo do estudo, importar carteiras CSV ou por input manual, monitorar precos globais de acoes, controlar cenarios, analisar setores e revisar risco com hierarquia visual mais clara."}
                       </${Typography}>
                     </${Box}>
 
@@ -2032,6 +3276,530 @@
                     </${SurfaceCard}>
                   </${Grid}>
                 </${Grid}>
+              </${Stack}>
+            </${TabPanel}>
+
+            <${TabPanel} active=${currentTab} value="sectors">
+              <${Stack} spacing=${2.5}>
+                <${SurfaceCard} sx=${{ p: 2.5 }}>
+                  <${SectionTitle}
+                    eyebrow="Setores"
+                    title=${view === "public" ? "Leitura setorial pública" : "Stock picking por setores"}
+                    subtitle=${view === "public"
+                      ? "A versão pública agrupa apenas as ideias e temas principais do snapshot sanitizado."
+                      : "A watchlist é agrupada por buckets setoriais para facilitar comparação de upside, prioridade e tese."}
+                    action=${html`
+                      <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+                        <${Chip}
+                          label=${`${sectorInsights.length} grupos`}
+                          sx=${{
+                            bgcolor: "rgba(74,163,223,0.14)",
+                            color: "#9dd4ff",
+                            border: "1px solid rgba(74,163,223,0.35)",
+                            fontWeight: 700,
+                          }}
+                        />
+                        <${Chip}
+                          label=${activeSectorGroup ? activeSectorGroup.label : "Sem seleção"}
+                          sx=${{
+                            bgcolor: "rgba(208,139,46,0.14)",
+                            color: "#ffd38d",
+                            border: "1px solid rgba(208,139,46,0.35)",
+                            fontWeight: 700,
+                          }}
+                        />
+                      </${Stack}>
+                    `}
+                  />
+
+                  <${ToggleButtonGroup}
+                    value=${selectedSectorId}
+                    exclusive=${true}
+                    onChange=${(_, nextValue) => {
+                      if (nextValue) {
+                        setPrefs((current) => ({ ...current, selectedSector: nextValue }));
+                      }
+                    }}
+                    size="small"
+                    sx=${{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      "& .MuiToggleButton-root": {
+                        textTransform: "none",
+                        fontWeight: 700,
+                        borderColor: "rgba(255,255,255,0.08)",
+                        borderRadius: 999,
+                        px: 2,
+                      },
+                    }}
+                  >
+                    ${sectorInsights.map(
+                      (group) => html`<${ToggleButton} key=${group.bucket} value=${group.bucket}>${group.label}</${ToggleButton}>`
+                    )}
+                  </${ToggleButtonGroup}>
+                </${SurfaceCard}>
+
+                <${Grid} container spacing=${2}>
+                  <${Grid} item xs=${12} lg=${7}>
+                    <${Grid} container spacing=${2}>
+                      ${sectorInsights.map(
+                        (group) => html`
+                          <${Grid} item xs=${12} sm=${6} key=${group.bucket}>
+                            <${SectorGroupCard}
+                              group=${group}
+                              selected=${group.bucket === selectedSectorId}
+                              onClick=${() => setPrefs((current) => ({ ...current, selectedSector: group.bucket }))}
+                            />
+                          </${Grid}>
+                        `
+                      )}
+                    </${Grid}>
+                  </${Grid}>
+
+                  <${Grid} item xs=${12} lg=${5}>
+                    <${Stack} spacing=${2.5}>
+                      <${SurfaceCard} sx=${{ p: 2.5 }}>
+                        <${SectionTitle}
+                          eyebrow="Detalhe"
+                          title=${activeSectorGroup ? activeSectorGroup.label : "Setor selecionado"}
+                          subtitle=${activeSectorGroup ? activeSectorGroup.description : "Escolha um setor para abrir a leitura detalhada."}
+                        />
+
+                        ${activeSectorGroup
+                          ? html`
+                              <${Stack} spacing=${1.3}>
+                                <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+                                  <${Chip}
+                                    size="small"
+                                    label=${`${activeSectorGroup.count} nomes`}
+                                    sx=${{
+                                      bgcolor: "rgba(74,163,223,0.14)",
+                                      color: "#9dd4ff",
+                                      border: "1px solid rgba(74,163,223,0.35)",
+                                      fontWeight: 700,
+                                    }}
+                                  />
+                                  <${Chip}
+                                    size="small"
+                                    label=${`${formatPct(activeSectorGroup.averageUpside || 0)} upside médio`}
+                                    sx=${{
+                                      bgcolor: "rgba(70,209,190,0.14)",
+                                      color: "#46d1be",
+                                      border: "1px solid rgba(70,209,190,0.35)",
+                                      fontWeight: 700,
+                                    }}
+                                  />
+                                  <${Chip}
+                                    size="small"
+                                    label=${activeSectorGroup.bestPick ? `Top: ${activeSectorGroup.bestPick.symbol}` : "Sem top pick"}
+                                    sx=${{
+                                      bgcolor: "rgba(255,255,255,0.05)",
+                                      color: "text.secondary",
+                                      border: "1px solid rgba(255,255,255,0.08)",
+                                      fontWeight: 700,
+                                    }}
+                                  />
+                                </${Stack}>
+
+                                <${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(74,163,223,0.08)" }}>
+                                  ${activeSectorGroup.summary || "Sem picks suficientes para formar um resumo."}
+                                </${Alert}>
+
+                                <${TableContainer}
+                                  component=${Paper}
+                                  elevation=${0}
+                                  sx=${{
+                                    borderRadius: 3,
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    background: "rgba(255,255,255,0.03)",
+                                  }}
+                                >
+                                  <${Table} stickyHeader size="small" sx=${{ minWidth: 520 }}>
+                                    <${TableHead}>
+                                      <${TableRow}>
+                                        <${TableCell}>Ticker</${TableCell}>
+                                        <${TableCell}>Upside</${TableCell}>
+                                        <${TableCell}>Prioridade</${TableCell}>
+                                      </${TableRow}>
+                                    </${TableHead}>
+                                    <${TableBody}>
+                                      ${activeSectorGroup.items.map(
+                                        (item) => html`
+                                          <${TableRow} key=${item.symbol}>
+                                            <${TableCell}>
+                                              <${Typography} sx=${{ fontWeight: 700 }}>${item.symbol}</${Typography}>
+                                              <${Typography} variant="caption" color="text.secondary">
+                                                ${item.name}
+                                              </${Typography}>
+                                            </${TableCell}>
+                                            <${TableCell}>${formatPct(item.upsidePct)}</${TableCell}>
+                                            <${TableCell}>${formatPriority(item.priority)}</${TableCell}>
+                                          </${TableRow}>
+                                        `
+                                      )}
+                                    </${TableBody}>
+                                  </${Table}>
+                                </${TableContainer}>
+                              </${Stack}>
+                            `
+                          : html`
+                              <${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(74,163,223,0.08)" }}>
+                                Nenhum setor disponível nesta visualização.
+                              </${Alert}>
+                            `}
+                      </${SurfaceCard}>
+
+                      <${SurfaceCard} sx=${{ p: 2.5 }}>
+                        <${SectionTitle}
+                          eyebrow="Leitura"
+                          title="Como usar este painel"
+                          subtitle="Escolha um bucket, abra as melhores teses e compare o upside com a prioridade do estudo."
+                        />
+                        <${Stack} spacing=${1.2}>
+                          <${Alert} severity="success" variant="outlined" sx=${{ bgcolor: "rgba(70,209,190,0.08)" }}>
+                            Foque em setores com upside alto e tese clara antes de aumentar peso.
+                          </${Alert}>
+                          <${Alert} severity="warning" variant="outlined" sx=${{ bgcolor: "rgba(208,139,46,0.08)" }}>
+                            Use o perfil de risco para decidir o tamanho da posição, nao apenas o upside.
+                          </${Alert}>
+                        </${Stack}>
+                      </${SurfaceCard}>
+                    </${Stack}>
+                  </${Grid}>
+                </${Grid}>
+              </${Stack}>
+            </${TabPanel}>
+
+            <${TabPanel} active=${currentTab} value="risk">
+              <${Stack} spacing=${2.5}>
+                <${SurfaceCard} sx=${{ p: 2.5 }}>
+                  <${SectionTitle}
+                    eyebrow="Risco"
+                    title=${view === "public" ? "Painel sanitizado de risco" : "Gestão de risco da carteira"}
+                    subtitle=${view === "public"
+                      ? "A leitura pública mostra apenas métricas agregadas do snapshot."
+                      : "Escolha um perfil e acompanhe os limites principais antes de executar novas teses."}
+                    action=${view === "full"
+                      ? html`
+                          <${FormControl} size="small" sx=${{ minWidth: 220 }}>
+                            <${Select}
+                              value=${prefs.riskProfileId}
+                              onChange=${(event) =>
+                                setPrefs((current) => ({ ...current, riskProfileId: event.target.value }))}
+                            >
+                              <${MenuItem} value="balanced">Balanceado</${MenuItem}>
+                              <${MenuItem} value="defensive">Defensivo</${MenuItem}>
+                              <${MenuItem} value="convex">Convexo</${MenuItem}>
+                            </${Select}>
+                          </${FormControl}>
+                        `
+                      : null}
+                  />
+
+                  <${Grid} container spacing=${2}>
+                    <${Grid} item xs=${12} sm=${6} lg=${3}>
+                      <${RailMetric}
+                        label="Liquidez"
+                        value=${formatPct(view === "full" ? (importedSimulation.uploadedValue > 0 ? (importedSimulation.uploadedCurrentLiquidityValue / importedSimulation.uploadedValue) * 100 : Number(data.meta?.liquidityCurrentPct) || 0) : Number(data.meta?.liquidityCurrentPct) || liquidityShare)}
+                        caption="Atual"
+                        accent="#d08b2e"
+                      />
+                    </${Grid}>
+                    <${Grid} item xs=${12} sm=${6} lg=${3}>
+                      <${RailMetric}
+                        label="Top 5"
+                        value=${formatPct(view === "full" ? importedSimulation.model.topFiveShare : Number(data.meta?.baseTopFiveShare) || model.topFiveShare)}
+                        caption="Conc."
+                        accent="#ff7a59"
+                      />
+                    </${Grid}>
+                    <${Grid} item xs=${12} sm=${6} lg=${3}>
+                      <${RailMetric}
+                        label="Não-USD"
+                        value=${formatPct(view === "full" ? importedSimulation.model.nonUsdShare : displayNonUsdShare)}
+                        caption="FX"
+                        accent="#7e8cff"
+                      />
+                    </${Grid}>
+                    <${Grid} item xs=${12} sm=${6} lg=${3}>
+                      <${RailMetric}
+                        label="Residuais"
+                        value=${integerFormatter.format(view === "full" ? importedSimulation.residualCount : Number(data.meta?.residualCount) || 0)}
+                        caption="Out"
+                        accent="#8f99a8"
+                      />
+                    </${Grid}>
+                  </${Grid}>
+                </${SurfaceCard}>
+
+                ${view === "full"
+                  ? html`
+                      <${Grid} container spacing=${2}>
+                        ${portfolioRiskChecks.map(
+                          (check) => html`
+                            <${Grid} item xs=${12} md=${6} lg=${4}>
+                              <${RiskCheckCard} key=${check.key} check=${check} />
+                            </${Grid}>
+                          `
+                        )}
+                      </${Grid}>
+
+                      <${SurfaceCard} sx=${{ p: 2.5 }}>
+                        <${SectionTitle}
+                          eyebrow="Ações"
+                          title="O que fazer agora"
+                          subtitle="As recomendações abaixo seguem os limites do perfil selecionado e o estado da carteira simulada."
+                        />
+                        <${Stack} spacing=${1.2}>
+                          ${riskRecommendations.map(
+                            (note) => html`
+                              <${Alert} key=${note} severity="warning" variant="outlined" sx=${{ bgcolor: "rgba(208,139,46,0.08)" }}>
+                                ${note}
+                              </${Alert}>
+                            `
+                          )}
+                        </${Stack}>
+                      </${SurfaceCard}>
+                    `
+                  : html`
+                      <${SurfaceCard} sx=${{ p: 2.5 }}>
+                        <${SectionTitle}
+                          eyebrow="Leitura pública"
+                          title="Resumo agregado do risco"
+                          subtitle="A versão pública preserva a narrativa de risco sem expor a carteira operacional."
+                        />
+                        <${Stack} spacing=${1.2}>
+                          ${safeArray(notes).map(
+                            (note) => html`
+                              <${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(74,163,223,0.08)" }}>
+                                ${note}
+                              </${Alert}>
+                            `
+                          )}
+                        </${Stack}>
+                      </${SurfaceCard}>
+                    `}
+              </${Stack}>
+            </${TabPanel}>
+
+            <${TabPanel} active=${currentTab} value="simulator">
+              <${Stack} spacing=${2.5}>
+                <${SurfaceCard} sx=${{ p: 2.5 }}>
+                  <${SectionTitle}
+                    eyebrow="Simulador"
+                    title="Importe uma carteira CSV ou edite manualmente"
+                    subtitle="Aceita ticker, quantidade, preço local, valor em USD, moeda e setor. Tickers fora do modelo ficam como residuais."
+                    action=${html`
+                      <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+                        <${Button} variant="outlined" onClick=${loadCurrentPortfolio}>Carregar carteira atual</${Button}>
+                        <${Button} variant="outlined" onClick=${clearPortfolioRows}>Limpar</${Button}>
+                        <${Button} component="label" variant="contained" color="secondary" sx=${{ bgcolor: "secondary.main" }}>
+                          Upload CSV
+                          <input hidden type="file" accept=".csv,text/csv" onChange=${handlePortfolioCsvUpload} />
+                        </${Button}>
+                      </${Stack}>
+                    `}
+                  />
+                  ${portfolioNotice
+                    ? html`
+                        <${Alert} severity="info" variant="outlined" sx=${{ mb: 2, bgcolor: "rgba(74,163,223,0.08)" }}>
+                          ${portfolioNotice}
+                        </${Alert}>
+                      `
+                    : null}
+
+                  <${Grid} container spacing=${2}>
+                    <${Grid} item xs=${12} lg=${7}>
+                      <${Stack} spacing=${1.5}>
+                        <${SurfaceCard} sx=${{ p: 2.2 }}>
+                          <${Stack} spacing=${1.5}>
+                            <${Stack} direction="row" justifyContent="space-between" alignItems="center" spacing=${2}>
+                              <${Box}>
+                                <${Typography} sx=${{ fontWeight: 700 }}>
+                                  Capital para a simulação
+                                </${Typography}>
+                                <${Typography} variant="caption" color="text.secondary">
+                                  O cenário usa este capital para recalcular pesos e trades.
+                                </${Typography}>
+                              </${Box}>
+                              <${Chip}
+                                label=${scenario.label}
+                                sx=${{
+                                  bgcolor: "rgba(74,163,223,0.14)",
+                                  color: "#9dd4ff",
+                                  border: "1px solid rgba(74,163,223,0.35)",
+                                  fontWeight: 700,
+                                }}
+                              />
+                            </${Stack}>
+
+                            <${TextField}
+                              label="Capital da carteira (USD)"
+                              type="number"
+                              value=${prefs.portfolioCapital}
+                              onChange=${(event) =>
+                                setPrefs((current) => ({
+                                  ...current,
+                                  portfolioCapital: Number(event.target.value) || 0,
+                                }))}
+                              inputProps=${{ min: 0, step: 1000, inputMode: "decimal" }}
+                              fullWidth=${true}
+                              sx=${{
+                                maxWidth: 360,
+                                "& .MuiOutlinedInput-root": {
+                                  background: "rgba(255,255,255,0.03)",
+                                },
+                              }}
+                            />
+
+                            <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+                              <${Button} variant="outlined" onClick=${addPortfolioRow}>Adicionar linha</${Button}>
+                              <${Button}
+                                variant="text"
+                                onClick=${() =>
+                                  setPrefs((current) => ({
+                                    ...current,
+                                    portfolioCapital: importedSimulation.uploadedValue || current.portfolioCapital || current.capital,
+                                  }))}
+                              >
+                                Usar valor importado
+                              </${Button}>
+                            </${Stack}>
+                          </${Stack}>
+                        </${SurfaceCard}>
+
+                        <${Stack} spacing=${1.5}>
+                          ${portfolioRows.map(
+                            (row, index) => html`
+                              <${PortfolioDraftRow}
+                                key=${row.id}
+                                row=${row}
+                                index=${index}
+                                onChange=${(field, value) => patchPortfolioRow(index, field, value)}
+                                onRemove=${() => removePortfolioRow(index)}
+                                onDuplicate=${() => duplicatePortfolioRow(index)}
+                              />
+                            `
+                          )}
+                        </${Stack}>
+                      </${Stack}>
+                    </${Grid}>
+
+                    <${Grid} item xs=${12} lg=${5}>
+                      <${Stack} spacing=${2.5}>
+                        <${SurfaceCard} sx=${{ p: 2.5 }}>
+                          <${SectionTitle}
+                            eyebrow="Resumo"
+                            title="Leitura da carteira importada"
+                            subtitle="Os números abaixo usam o arquivo ou a edição manual para simular o cenário ativo."
+                          />
+                          <${Grid} container spacing=${1.5}>
+                            <${Grid} item xs=${12} sm=${6}>
+                              <${RailMetric}
+                                label="Valor importado"
+                                value=${formatMoney(importedSimulation.uploadedValue)}
+                                caption="USD"
+                                accent="#46d1be"
+                              />
+                            </${Grid}>
+                            <${Grid} item xs=${12} sm=${6}>
+                              <${RailMetric}
+                                label="Capital simulado"
+                                value=${formatMoney(importedSimulation.simulationCapital)}
+                                caption="Base"
+                                accent="#4aa3df"
+                              />
+                            </${Grid}>
+                            <${Grid} item xs=${12} sm=${6}>
+                              <${RailMetric}
+                                label="Liquidez"
+                                value=${formatPct(importedSimulation.uploadedValue > 0 ? (importedSimulation.uploadedCurrentLiquidityValue / importedSimulation.uploadedValue) * 100 : 0)}
+                                caption="Atual"
+                                accent="#d08b2e"
+                              />
+                            </${Grid}>
+                            <${Grid} item xs=${12} sm=${6}>
+                              <${RailMetric}
+                                label="Residuais"
+                                value=${integerFormatter.format(importedSimulation.residualCount)}
+                                caption="Out"
+                                accent="#8f99a8"
+                              />
+                            </${Grid}>
+                          </${Grid}>
+                          <${Stack} spacing=${1.2} sx=${{ mt: 2 }}>
+                            <${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(74,163,223,0.08)" }}>
+                              ${importedSimulation.importedCount} linhas importadas e ${importedSimulation.baseMatchedCount} alinhadas ao modelo.
+                            </${Alert}>
+                            <${Alert} severity="warning" variant="outlined" sx=${{ bgcolor: "rgba(208,139,46,0.08)" }}>
+                              ${importedSimulation.unmappedSymbols.length
+                                ? `${importedSimulation.unmappedSymbols.length} tickers ficaram fora da cesta principal e foram tratados como residuais.`
+                                : "Todos os tickers da carteira importada estão mapeados para o modelo principal."}
+                            </${Alert}>
+                          </${Stack}>
+                        </${SurfaceCard}>
+
+                        <${SurfaceCard} sx=${{ p: 2.5 }}>
+                          <${SectionTitle}
+                            eyebrow="Simulação"
+                            title="Trades sugeridos"
+                            subtitle="Comparação entre a carteira carregada e o cenario do modelo."
+                          />
+                          ${importedTradeRows.length
+                            ? html`
+                                <${TableContainer}
+                                  component=${Paper}
+                                  elevation=${0}
+                                  sx=${{
+                                    borderRadius: 3,
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    background: "rgba(255,255,255,0.03)",
+                                  }}
+                                >
+                                  <${Table} stickyHeader size="small" sx=${{ minWidth: 760 }}>
+                                    <${TableHead}>
+                                      <${TableRow}>
+                                        <${TableCell}>Ativo</${TableCell}>
+                                        <${TableCell}>Tema</${TableCell}>
+                                        <${TableCell}>Atual</${TableCell}>
+                                        <${TableCell}>Alvo</${TableCell}>
+                                        <${TableCell}>Gap</${TableCell}>
+                                      </${TableRow}>
+                                    </${TableHead}>
+                                    <${TableBody}>
+                                      ${importedTradeRows.slice(0, 18).map(
+                                        (row) => html`
+                                          <${TableRow} key=${row.asset}>
+                                            <${TableCell}>
+                                              <${Typography} sx=${{ fontWeight: 700 }}>${row.asset}</${Typography}>
+                                              <${Typography} variant="caption" color="text.secondary">
+                                                ${row.action}
+                                              </${Typography}>
+                                            </${TableCell}>
+                                            <${TableCell}>${row.themeLabel}</${TableCell}>
+                                            <${TableCell}>${formatMoney(row.currentValue)}</${TableCell}>
+                                            <${TableCell}>${formatMoney(row.targetValue)}</${TableCell}>
+                                            <${TableCell} sx=${{ color: row.trade >= 0 ? "#46d1be" : "#ff7a59", fontWeight: 700 }}>
+                                              ${row.trade >= 0 ? "+" : ""}${formatMoney(row.trade)}
+                                            </${TableCell}>
+                                          </${TableRow}>
+                                        `
+                                      )}
+                                    </${TableBody}>
+                                  </${Table}>
+                                </${TableContainer}>
+                              `
+                            : html`
+                                <${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(74,163,223,0.08)" }}>
+                                  Adicione linhas ou carregue um CSV para ver a tabela de trades sugeridos.
+                                </${Alert}>
+                              `}
+                        </${SurfaceCard}>
+                      </${Stack}>
+                    </${Grid}>
+                  </${Grid}>
+                </${SurfaceCard}>
               </${Stack}>
             </${TabPanel}>
 

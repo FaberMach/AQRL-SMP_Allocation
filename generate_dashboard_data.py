@@ -422,6 +422,7 @@ def build_price_book(price_rows: list[dict], price_date: str | None = None) -> t
             "fxToUsd": fx_rate,
             "date": row.get("date") or row.get("price_date") or "",
             "error": row.get("error") or row.get("price_error") or "",
+            "source": row.get("source") or "snapshot",
             "status": "ok" if close_local is not None else "missing",
             "url": row.get("url") or "",
         }
@@ -696,6 +697,7 @@ def build_exports(data: dict) -> dict:
                 "fx_to_usd": format_fx(row["fxToUsd"]),
                 "date": row["date"],
                 "status": row["status"],
+                "source": row["source"],
                 "error": row["error"],
             }
         )
