@@ -98,7 +98,40 @@
       public: false,
       full: true,
     },
+    report: {
+      label: "Relatório",
+      public: true,
+      full: true,
+    },
+    tradingview: {
+      label: "TradingView",
+      public: true,
+      full: true,
+    },
   };
+
+  const DEFAULT_REPORT_HTML = `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>The Digital Alpha Gap</title>
+  </head>
+  <body>
+    <h1>The Digital Alpha Gap</h1>
+    <p>Como a lacuna entre PIB convencional e valor digital real cria oportunidades estruturais em FX, equities e microestrutura de mercado.</p>
+    <h2>O problema de medição: por que o PIB é cego à economia digital</h2>
+    <p>O produto interno bruto foi criado numa era pré-digital e mede mal serviços gratuitos, consumo não monetizado e valor de rede.</p>
+    <h2>Algoritmos evoluídos: LLMs como descobridores de equilíbrio em jogos de informação imperfeita</h2>
+    <p>Os agentes do mercado competem em jogos adaptativos; modelos evoluídos por LLMs podem descobrir heurísticas de equilíbrio mais robustas do que designs humanos fixos.</p>
+    <h2>A hipótese de trading: três camadas de alpha sobrepostas</h2>
+    <h3>Camada 1 — Mispricing macro FX</h3>
+    <p>Economias com forte intensidade digital tendem a carregar subprecificação estrutural quando o PIB oficial não incorpora seu valor real.</p>
+    <h3>Camada 2 — Equities</h3>
+    <p>Empresas com opcionalidade digital podem capturar reprecificação por consumo excedente e expansão de múltiplos.</p>
+    <h3>Camada 3 — Execução</h3>
+    <p>Algoritmos de decisão e execução precisam respeitar limites de risco, liquidez e controle de concentração.</p>
+  </body>
+</html>`;
 
   const themeAccentMap = new Map();
   for (const theme of Array.isArray(data.themes) ? data.themes : []) {
@@ -1318,6 +1351,191 @@
     return notes;
   }
 
+  function cleanInlineText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function slugifyText(value) {
+    return cleanInlineText(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function extractHtmlParagraphs(startNode) {
+    const blocks = [];
+    let cursor = startNode?.nextElementSibling || null;
+    while (cursor) {
+      if (/^H[12]$/.test(cursor.tagName)) {
+        break;
+      }
+      if (["P", "LI", "BLOCKQUOTE", "DIV"].includes(cursor.tagName)) {
+        const text = cleanInlineText(cursor.textContent);
+        if (text) {
+          blocks.push(text);
+        }
+      }
+      if (blocks.join(" ").length > 360) {
+        break;
+      }
+      cursor = cursor.nextElementSibling;
+    }
+    return blocks.join(" ");
+  }
+
+  function parseHtmlReport(source) {
+    const fallback = {
+      title: "Relatório digital",
+      subtitle: "Cole um HTML para converter em estrutura editorial e blocos dinâmicos.",
+      metrics: [
+        { label: "Seções", value: 0 },
+        { label: "Parágrafos", value: 0 },
+        { label: "Citações", value: 0 },
+        { label: "Gráficos", value: 0 },
+      ],
+      sections: [],
+      quotes: [],
+      tables: [],
+      hasSource: false,
+    };
+
+    if (!source || typeof source !== "string") {
+      return fallback;
+    }
+
+    try {
+      const doc = new DOMParser().parseFromString(source, "text/html");
+      const title = cleanInlineText(
+        doc.querySelector("title")?.textContent ||
+          doc.querySelector("h1")?.textContent ||
+          fallback.title
+      );
+      const intro = cleanInlineText(
+        doc.querySelector("body > p")?.textContent ||
+          doc.querySelector("p")?.textContent ||
+          fallback.subtitle
+      );
+      const headingNodes = Array.from(doc.querySelectorAll("h2, h3")).slice(0, 12);
+      const sections = headingNodes
+        .map((node, index) => {
+          const sectionTitle = cleanInlineText(node.textContent);
+          if (!sectionTitle) {
+            return null;
+          }
+          return {
+            id: `${index}-${slugifyText(sectionTitle) || "section"}`,
+            level: Number(node.tagName.slice(1)) || 2,
+            title: sectionTitle,
+            summary: extractHtmlParagraphs(node) || intro,
+          };
+        })
+        .filter(Boolean);
+      const paragraphs = Array.from(doc.querySelectorAll("p"))
+        .map((node) => cleanInlineText(node.textContent))
+        .filter(Boolean);
+      const quotes = Array.from(doc.querySelectorAll("blockquote"))
+        .map((node) => cleanInlineText(node.textContent))
+        .filter(Boolean);
+      const tables = Array.from(doc.querySelectorAll("table"))
+        .slice(0, 3)
+        .map((table, tableIndex) => {
+          const rows = Array.from(table.querySelectorAll("tr"))
+            .slice(0, 8)
+            .map((row) => Array.from(row.children).map((cell) => cleanInlineText(cell.textContent)));
+          return { id: `table-${tableIndex}`, rows };
+        })
+        .filter((table) => table.rows.length > 0);
+
+      return {
+        title,
+        subtitle: intro,
+        metrics: [
+          { label: "Seções", value: sections.length },
+          { label: "Parágrafos", value: paragraphs.length },
+          { label: "Citações", value: quotes.length },
+          { label: "Gráficos", value: doc.querySelectorAll("canvas, svg").length },
+        ],
+        sections,
+        quotes,
+        tables,
+        paragraphs,
+        hasSource: true,
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function toTradingViewSymbol(symbol, currency = "") {
+    const raw = cleanInlineText(symbol);
+    if (!raw) {
+      return "NASDAQ:SPY";
+    }
+    if (raw.includes(":")) {
+      return raw.toUpperCase();
+    }
+    if (raw.endsWith(".TO")) {
+      return `TSX:${raw.slice(0, -3)}`;
+    }
+    if (raw.endsWith(".AX")) {
+      return `ASX:${raw.slice(0, -3)}`;
+    }
+    if (raw.endsWith(".L")) {
+      return `LSE:${raw.slice(0, -2)}`;
+    }
+    if (raw.endsWith(".NS")) {
+      return `NSE:${raw.slice(0, -3)}`;
+    }
+    if (raw.endsWith(".SA")) {
+      return `B3:${raw.slice(0, -3)}`;
+    }
+    if (currency === "AUD") {
+      return `ASX:${raw}`;
+    }
+    if (currency === "CAD") {
+      return `TSX:${raw}`;
+    }
+    if (currency === "GBP") {
+      return `LSE:${raw}`;
+    }
+    return `NASDAQ:${raw}`;
+  }
+
+  function buildTradingViewWatchlist(portfolioData) {
+    const sourceRows = [
+      ...safeArray(portfolioData.study?.topIdeas),
+      ...safeArray(portfolioData.marketPrices),
+    ];
+    const seen = new Set();
+    const choices = [];
+
+    for (const row of sourceRows) {
+      const rawSymbol = row?.yahoo || row?.symbol;
+      const tvSymbol = toTradingViewSymbol(rawSymbol, row?.currency || row?.currencyRaw || "");
+      if (seen.has(tvSymbol)) {
+        continue;
+      }
+      seen.add(tvSymbol);
+      choices.push({
+        id: tvSymbol,
+        tvSymbol,
+        label: row?.name || row?.label || row?.symbol || rawSymbol,
+        rawSymbol: rawSymbol || row?.symbol || tvSymbol,
+        currency: row?.currency || row?.currencyRaw || "USD",
+      });
+      if (choices.length >= 14) {
+        break;
+      }
+    }
+
+    return choices.length
+      ? choices
+      : [
+          { id: "NASDAQ:AMZN", tvSymbol: "NASDAQ:AMZN", label: "AMZN", rawSymbol: "AMZN", currency: "USD" },
+          { id: "NASDAQ:NVDA", tvSymbol: "NASDAQ:NVDA", label: "NVDA", rawSymbol: "NVDA", currency: "USD" },
+        ];
+  }
+
   function TabPanel(props) {
     const { active, value, children } = props;
     if (active !== value) {
@@ -1342,7 +1560,7 @@
                 sx=${{
                   display: "block",
                   mb: 0.5,
-                  color: "secondary.main",
+                  color: "#0055a4",
                   letterSpacing: "0.16em",
                   fontWeight: 700,
                 }}
@@ -1353,9 +1571,10 @@
           <${Typography}
             variant="h5"
             sx=${{
-              fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
-              fontWeight: 700,
-              letterSpacing: "-0.03em",
+              fontFamily: '"EB Garamond", Georgia, serif',
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              color: "#0b1f3a",
             }}
           >
             ${title}
@@ -1381,12 +1600,9 @@
         elevation=${0}
         sx=${{
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "linear-gradient(180deg, rgba(11,18,30,0.96) 0%, rgba(10,16,28,0.84) 100%)",
-          boxShadow: "0 28px 70px rgba(0,0,0,0.32)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,247,244,0.94) 100%)",
+          boxShadow: "0 18px 50px rgba(11,31,58,0.08)",
           ...sx,
         }}
       >
@@ -1403,10 +1619,9 @@
           position: "relative",
           overflow: "hidden",
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "linear-gradient(180deg, rgba(11,18,30,0.96) 0%, rgba(10,16,28,0.84) 100%)",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "#ffffff",
+          boxShadow: "0 16px 40px rgba(11,31,58,0.08)",
         }}
       >
         <${Box}
@@ -1420,7 +1635,7 @@
             variant="overline"
             sx=${{
               display: "block",
-              color: "text.secondary",
+              color: "#6b7280",
               letterSpacing: "0.16em",
               fontWeight: 700,
             }}
@@ -1431,9 +1646,10 @@
             variant="h4"
             sx=${{
               mt: 1.2,
-              fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
-              fontWeight: 700,
-              letterSpacing: "-0.04em",
+              fontFamily: '"EB Garamond", Georgia, serif',
+              fontWeight: 600,
+              letterSpacing: "-0.03em",
+              color: "#0b1f3a",
             }}
           >
             ${value}
@@ -1453,8 +1669,9 @@
         sx=${{
           p: 2,
           borderRadius: 3,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "#ffffff",
+          boxShadow: "0 10px 26px rgba(11,31,58,0.06)",
         }}
       >
         <${Stack} direction="row" justifyContent="space-between" spacing=${2} alignItems="flex-start">
@@ -1466,8 +1683,9 @@
               variant="h6"
               sx=${{
                 mt: 0.5,
-                fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
-                fontWeight: 700,
+                fontFamily: '"EB Garamond", Georgia, serif',
+                fontWeight: 600,
+                color: "#0b1f3a",
               }}
             >
               ${value}
@@ -1504,8 +1722,9 @@
         sx=${{
           p: 2,
           borderRadius: 3,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "#ffffff",
+          boxShadow: "0 10px 26px rgba(11,31,58,0.05)",
         }}
       >
         <${Stack} direction="row" justifyContent="space-between" spacing=${2} alignItems="flex-start">
@@ -1514,7 +1733,7 @@
               variant="subtitle1"
               sx=${{
                 fontWeight: 700,
-                color: row.accent || "primary.main",
+                color: row.accent || "#0055a4",
                 letterSpacing: "-0.02em",
               }}
             >
@@ -1557,7 +1776,7 @@
             sx=${{
               height: 14,
               borderRadius: 999,
-              bgcolor: "rgba(255,255,255,0.05)",
+              bgcolor: "rgba(11,31,58,0.05)",
               "& .MuiLinearProgress-bar": {
                 borderRadius: 999,
                 bgcolor: row.accent || "#4aa3df",
@@ -1603,12 +1822,11 @@
         sx=${{
           height: "100%",
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background:
-            "linear-gradient(180deg, rgba(12,20,34,0.98) 0%, rgba(10,16,28,0.84) 100%)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,247,244,0.94) 100%)",
           position: "relative",
           overflow: "hidden",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.24)",
+          boxShadow: "0 16px 40px rgba(11,31,58,0.08)",
           "&::before": {
             content: '""',
             position: "absolute",
@@ -1623,16 +1841,17 @@
         <${CardContent} sx=${{ p: 2.2, minHeight: 220 }}>
           <${Stack} direction="row" justifyContent="space-between" alignItems="flex-start" spacing=${2}>
             <${Box}>
-              <${Typography}
-                variant="h6"
-                sx=${{
-                  fontWeight: 700,
-                  fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
-                  letterSpacing: "-0.03em",
-                }}
-              >
-                ${idea.symbol}
-              </${Typography}>
+            <${Typography}
+              variant="h6"
+              sx=${{
+                fontWeight: 700,
+                fontFamily: '"EB Garamond", Georgia, serif',
+                letterSpacing: "-0.03em",
+                color: "#0b1f3a",
+              }}
+            >
+              ${idea.symbol}
+            </${Typography}>
               <${Typography} variant="body2" color="text.secondary" sx=${{ mt: 0.2 }}>
                 ${idea.name}
               </${Typography}>
@@ -1695,8 +1914,8 @@
         sx=${{
           borderRadius: 3,
           overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "#ffffff",
           "&:before": { display: "none" },
           mb: index === undefined ? 0 : 1.2,
         }}
@@ -1741,7 +1960,7 @@
       <${TableRow}
         hover
         sx=${{
-          "& td": { borderBottomColor: "rgba(255,255,255,0.08)" },
+          "& td": { borderBottomColor: "rgba(11,31,58,0.08)" },
         }}
       >
         <${TableCell}>
@@ -1798,7 +2017,7 @@
       <${TableRow}
         hover
         sx=${{
-          "& td": { borderBottomColor: "rgba(255,255,255,0.08)" },
+          "& td": { borderBottomColor: "rgba(11,31,58,0.08)" },
         }}
       >
         <${TableCell}>
@@ -1860,7 +2079,7 @@
     const status = statusPalette[row.status] || statusPalette.ok;
     const theme = safeArray(data.themes).find((item) => item.id === row.themeId);
     return html`
-      <${TableRow} hover sx=${{ "& td": { borderBottomColor: "rgba(255,255,255,0.08)" } }}>
+      <${TableRow} hover sx=${{ "& td": { borderBottomColor: "rgba(11,31,58,0.08)" } }}>
         <${TableCell}>
           <${Typography} sx=${{ fontWeight: 700 }}>${row.symbol}</${Typography}>
           <${Typography} variant="caption" color="text.secondary">
@@ -1905,7 +2124,7 @@
     const priority = formatPriority(row.priority);
     const accent = priorityPalette[priority] || "#8f99a8";
     return html`
-      <${TableRow} hover sx=${{ "& td": { borderBottomColor: "rgba(255,255,255,0.08)" } }}>
+      <${TableRow} hover sx=${{ "& td": { borderBottomColor: "rgba(11,31,58,0.08)" } }}>
         <${TableCell}>
           <${Typography} sx=${{ fontWeight: 700 }}>${row.symbol}</${Typography}>
           <${Typography} variant="caption" color="text.secondary">
@@ -1952,8 +2171,8 @@
         sx=${{
           p: 2,
           borderRadius: 4,
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "rgba(11,31,58,0.03)",
         }}
       >
         <${Stack} spacing=${1.5}>
@@ -2068,12 +2287,12 @@
           height: "100%",
           cursor: "pointer",
           borderRadius: 4,
-          border: selected ? `1px solid ${accent}88` : "1px solid rgba(255,255,255,0.08)",
+          border: selected ? `1px solid ${accent}88` : "1px solid rgba(11,31,58,0.12)",
           background: selected
-            ? `linear-gradient(180deg, ${accent}18 0%, rgba(10,16,28,0.88) 100%)`
-            : "linear-gradient(180deg, rgba(12,20,34,0.98) 0%, rgba(10,16,28,0.84) 100%)",
+            ? `linear-gradient(180deg, ${accent}12 0%, rgba(255,255,255,0.98) 100%)`
+            : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,247,244,0.94) 100%)",
           transition: "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
-          boxShadow: selected ? `0 20px 55px ${accent}24` : "0 20px 50px rgba(0,0,0,0.24)",
+          boxShadow: selected ? `0 18px 45px ${accent}20` : "0 16px 40px rgba(11,31,58,0.08)",
           "&:hover": {
             transform: "translateY(-2px)",
           },
@@ -2087,8 +2306,9 @@
                   variant="h6"
                   sx=${{
                     fontWeight: 700,
-                    fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
+                    fontFamily: '"EB Garamond", Georgia, serif',
                     letterSpacing: "-0.03em",
+                    color: "#0b1f3a",
                   }}
                 >
                   ${group.label}
@@ -2124,9 +2344,9 @@
                 size="small"
                 label=${group.bestPick ? `Topo: ${group.bestPick.symbol}` : "Sem picks"}
                 sx=${{
-                  bgcolor: "rgba(255,255,255,0.06)",
-                  color: "text.secondary",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  bgcolor: "rgba(11,31,58,0.04)",
+                  color: "#6b7280",
+                  border: "1px solid rgba(11,31,58,0.12)",
                   fontWeight: 700,
                 }}
               />
@@ -2149,12 +2369,12 @@
                         py: 0.65,
                         px: 1,
                         borderRadius: 2,
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(11,31,58,0.03)",
+                        border: "1px solid rgba(11,31,58,0.08)",
                       }}
                     >
                       <${Box} sx=${{ minWidth: 0 }}>
-                        <${Typography} sx=${{ fontWeight: 700, lineHeight: 1.2 }}>
+                        <${Typography} sx=${{ fontWeight: 700, lineHeight: 1.2, color: "#0b1f3a" }}>
                           ${item.symbol}
                         </${Typography}>
                         <${Typography} variant="caption" color="text.secondary" sx=${{ display: "block" }}>
@@ -2198,12 +2418,13 @@
           p: 2,
           borderRadius: 4,
           border: `1px solid ${tone.color}55`,
-          background: "rgba(255,255,255,0.03)",
+          background: "#ffffff",
+          boxShadow: "0 14px 34px rgba(11,31,58,0.06)",
         }}
       >
         <${Stack} spacing=${1}>
           <${Stack} direction="row" justifyContent="space-between" alignItems="center" spacing=${2}>
-            <${Typography} sx=${{ fontWeight: 700 }}>
+            <${Typography} sx=${{ fontWeight: 700, color: "#0b1f3a" }}>
               ${check.label}
             </${Typography}>
             <${Chip}
@@ -2243,6 +2464,198 @@
     `;
   }
 
+  function TradingViewEmbed({ widget, config, minHeight = 420 }) {
+    const containerRef = React.useRef(null);
+    const configSignature = React.useMemo(() => JSON.stringify(config || {}), [config]);
+
+    React.useEffect(() => {
+      const root = containerRef.current;
+      if (!root) {
+        return undefined;
+      }
+      root.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.className = "tradingview-widget-container";
+      wrapper.style.width = "100%";
+      wrapper.style.height = "100%";
+
+      const widgetRoot = document.createElement("div");
+      widgetRoot.className = "tradingview-widget-container__widget";
+      widgetRoot.style.width = "100%";
+      widgetRoot.style.height = "100%";
+      wrapper.appendChild(widgetRoot);
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.type = "text/javascript";
+      script.src = `https://s3.tradingview.com/external-embedding/embed-widget-${widget}.js`;
+      script.text = JSON.stringify({
+        ...(config || {}),
+        autosize: true,
+      });
+      wrapper.appendChild(script);
+
+      root.appendChild(wrapper);
+      return () => {
+        if (root) {
+          root.innerHTML = "";
+        }
+      };
+    }, [widget, configSignature]);
+
+    return html`
+      <${Box}
+        ref=${containerRef}
+        sx=${{
+          minHeight,
+          height: "100%",
+          width: "100%",
+        }}
+      />
+    `;
+  }
+
+  function ReportSectionCard({ number, title, lead, children, accent = "#0055a4" }) {
+    return html`
+      <${Box}
+        component="section"
+        sx=${{
+          py: 3.5,
+          borderBottom: "1px solid rgba(11,31,58,0.12)",
+        }}
+      >
+        <${Box}
+          sx=${{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "200px minmax(0, 1fr)" },
+            gap: { xs: 1.5, md: 4 },
+            alignItems: "start",
+          }}
+        >
+          <${Typography}
+            variant="overline"
+            sx=${{
+              color: accent,
+              letterSpacing: "0.22em",
+              fontWeight: 700,
+              pt: 0.75,
+            }}
+          >
+            ${number}
+          </${Typography}>
+          <${Box}>
+            <${Typography}
+              variant="h4"
+              sx=${{
+                fontFamily: '"EB Garamond", Georgia, serif',
+                fontWeight: 600,
+                lineHeight: 1.16,
+                color: "#0b1f3a",
+                mb: 1.1,
+              }}
+            >
+              ${title}
+            </${Typography}>
+            ${lead
+              ? html`<${Typography}
+                  variant="body1"
+                  sx=${{
+                    color: "text.secondary",
+                    lineHeight: 1.8,
+                    mb: 2,
+                    fontWeight: 300,
+                    maxWidth: 980,
+                  }}
+                >
+                  ${lead}
+                </${Typography}>`
+              : null}
+            ${children}
+          </${Box}>
+        </${Box}>
+      </${Box}>
+    `;
+  }
+
+  function SimpleBarChart({ title, subtitle, items }) {
+    const safeItems = safeArray(items).filter((item) => Number.isFinite(Number(item.value)));
+    const maxValue = safeItems.reduce((max, item) => Math.max(max, Number(item.value) || 0), 0) || 1;
+    return html`
+      <${Paper}
+        elevation=${0}
+        sx=${{
+          p: 2.25,
+          borderRadius: 4,
+          border: "1px solid rgba(11,31,58,0.12)",
+          background: "#ffffff",
+          boxShadow: "0 12px 30px rgba(11,31,58,0.06)",
+        }}
+      >
+        <${Stack} spacing=${1.4}>
+          <${Box}>
+            <${Typography}
+              variant="overline"
+              sx=${{ display: "block", color: "#0055a4", letterSpacing: "0.18em", fontWeight: 700 }}
+            >
+              Exhibit
+            </${Typography}>
+            <${Typography}
+              variant="h6"
+              sx=${{
+                fontFamily: '"EB Garamond", Georgia, serif',
+                fontWeight: 600,
+                color: "#0b1f3a",
+              }}
+            >
+              ${title}
+            </${Typography}>
+            ${subtitle
+              ? html`<${Typography} variant="body2" color="text.secondary" sx=${{ mt: 0.4, lineHeight: 1.6 }}>
+                  ${subtitle}
+                </${Typography}>`
+              : null}
+          </${Box}>
+
+          <${Stack} spacing=${1.1}>
+            ${safeItems.map((item) => {
+              const width = Math.max(6, (Number(item.value) / maxValue) * 100);
+              const accent = item.accent || "#0055a4";
+              return html`
+                <${Box} key=${item.label}>
+                  <${Stack} direction="row" justifyContent="space-between" spacing=${2} sx=${{ mb: 0.5 }}>
+                    <${Typography} sx=${{ fontWeight: 700, color: "#0b1f3a" }}>
+                      ${item.label}
+                    </${Typography}>
+                    <${Typography} variant="caption" color="text.secondary">
+                      ${item.valueLabel || item.value}
+                    </${Typography}>
+                  </${Stack}>
+                  <${Box}
+                    sx=${{
+                      height: 10,
+                      borderRadius: 999,
+                      background: "rgba(11,31,58,0.08)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <${Box}
+                      sx=${{
+                        width: `${width}%`,
+                        height: "100%",
+                        borderRadius: 999,
+                        background: `linear-gradient(90deg, ${accent}, rgba(0,85,164,0.35))`,
+                      }}
+                    />
+                  </${Box}>
+                </${Box}>
+              `;
+            })}
+          </${Stack}>
+        </${Stack}>
+      </${Paper}>
+    `;
+  }
+
   function App() {
     const defaultScenario = resolveDefaultScenario(data);
     const stored = readStoredPrefs();
@@ -2262,6 +2675,18 @@
         : initialScenarioId === "convex"
           ? "convex"
           : "balanced";
+    const tradingViewChoices = React.useMemo(() => buildTradingViewWatchlist(data), []);
+    const storedTradingViewSymbol = tradingViewChoices.some((choice) => choice.tvSymbol === stored.tradingViewSymbol)
+      ? stored.tradingViewSymbol
+      : tradingViewChoices[0]?.tvSymbol || "NASDAQ:AMZN";
+    const storedReportSource =
+      typeof stored.reportSource === "string" && stored.reportSource.trim().length > 0
+        ? stored.reportSource
+        : DEFAULT_REPORT_HTML;
+    const storedReportDraft =
+      typeof stored.reportDraft === "string" && stored.reportDraft.trim().length > 0
+        ? stored.reportDraft
+        : storedReportSource;
     const availableTabs = Object.entries(tabConfig)
       .filter(([key, cfg]) => cfg[view])
       .map(([key, cfg]) => ({ id: key, label: cfg.label }));
@@ -2281,12 +2706,18 @@
           : initialCapital,
       riskProfileId: initialRiskProfileId,
       selectedSector: stored.selectedSector || "",
+      tradingViewSymbol: storedTradingViewSymbol,
+      reportSource: storedReportSource,
+      reportDraft: storedReportDraft,
     });
 
     const scenario = resolveScenario(data, prefs.scenarioId);
     const model = React.useMemo(() => buildModel(data, scenario, prefs.capital), [scenario, prefs.capital]);
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
     const sectorInsights = React.useMemo(() => buildSectorInsights(data), []);
+    const reportSource = prefs.reportSource || DEFAULT_REPORT_HTML;
+    const reportDraft = prefs.reportDraft || reportSource;
+    const parsedReport = React.useMemo(() => parseHtmlReport(reportSource), [reportSource]);
     const portfolioRows = React.useMemo(() => coercePortfolioDraftRows(prefs.portfolioRows), [prefs.portfolioRows]);
     const importedSimulation = React.useMemo(
       () => buildImportedPortfolioModel(data, portfolioRows, scenario, prefs.portfolioCapital),
@@ -2327,6 +2758,9 @@
       .slice()
       .sort((a, b) => Number(b.absTrade) - Number(a.absTrade));
     const [portfolioNotice, setPortfolioNotice] = React.useState("");
+    const [reportNotice, setReportNotice] = React.useState("");
+    const selectedTradingViewChoice =
+      tradingViewChoices.find((choice) => choice.tvSymbol === prefs.tradingViewSymbol) || tradingViewChoices[0] || null;
 
     const updatePortfolioRows = (nextRows) => {
       setPrefs((current) => ({
@@ -2382,6 +2816,56 @@
       setPortfolioNotice("Editor limpo para entrada manual.");
     };
 
+    const applyReportDraft = () => {
+      setPrefs((current) => ({
+        ...current,
+        reportSource: reportDraft,
+        tab: "report",
+      }));
+      setReportNotice(`Relatório carregado com ${reportDraft.length} caracteres.`);
+    };
+
+    const resetReportSample = () => {
+      setPrefs((current) => ({
+        ...current,
+        reportDraft: DEFAULT_REPORT_HTML,
+        reportSource: DEFAULT_REPORT_HTML,
+        tab: "report",
+      }));
+      setReportNotice("Amostra editorial restaurada.");
+    };
+
+    const handleReportHtmlUpload = (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      file
+        .text()
+        .then((text) => {
+          setPrefs((current) => ({
+            ...current,
+            reportDraft: text,
+            reportSource: text,
+            tab: "report",
+          }));
+          setReportNotice(`Arquivo ${file.name} importado para leitura editorial.`);
+        })
+        .catch((error) => {
+          setReportNotice(`Falha ao ler ${file.name}: ${error?.message || error}`);
+        });
+    };
+
+    const handleTradingViewSymbolChange = (event) => {
+      const nextValue = event.target.value;
+      setPrefs((current) => ({
+        ...current,
+        tradingViewSymbol: nextValue,
+        tab: "tradingview",
+      }));
+    };
+
     const handlePortfolioCsvUpload = (event) => {
       const file = event.target.files?.[0];
       event.target.value = "";
@@ -2427,6 +2911,9 @@
         portfolioCapital: prefs.portfolioCapital,
         riskProfileId: prefs.riskProfileId,
         selectedSector: selectedSectorId,
+        tradingViewSymbol: prefs.tradingViewSymbol,
+        reportSource: prefs.reportSource,
+        reportDraft: prefs.reportDraft,
       });
     }, [prefs, selectedSectorId]);
 
@@ -2459,10 +2946,12 @@
     if (view === "full") {
       summaryChips.push(`${integerFormatter.format(model.residualCount)} residuals`);
       summaryChips.push(`${integerFormatter.format(portfolioRows.length)} linhas carteira`);
+      summaryChips.push(`${parsedReport.sections.length} seções HTML`);
     } else if (safeArray(data.study?.topIdeas).length) {
       summaryChips.push(`${integerFormatter.format(topIdeas.length)} top ideas`);
     }
     summaryChips.push(`${integerFormatter.format(sectorInsights.length)} setores`);
+    summaryChips.push(`${tradingViewChoices.length} live watchlist`);
 
     const metricCards = view === "full"
       ? [
@@ -2542,13 +3031,100 @@
           },
         ];
 
+    const tradingViewSymbol = selectedTradingViewChoice?.tvSymbol || "NASDAQ:AMZN";
+    const tradingViewTickerSymbols = tradingViewChoices
+      .slice(0, 8)
+      .map((choice) => ({
+        proName: choice.tvSymbol,
+        title: choice.label,
+      }))
+      .concat([
+        { proName: "FOREXCOM:SPXUSD", title: "S&P 500" },
+        { proName: "NASDAQ:NDX", title: "Nasdaq 100" },
+      ]);
+    const tradingViewMarketTabs = [
+      {
+        title: "Índices",
+        symbols: [
+          { s: "FOREXCOM:SPXUSD", d: "S&P 500" },
+          { s: "NASDAQ:NDX", d: "Nasdaq 100" },
+          { s: "AMEX:IWM", d: "Russell 2000" },
+          { s: "TVC:DXY", d: "Dollar Index" },
+        ],
+        originalTitle: "Índices",
+      },
+      {
+        title: "Carteira",
+        symbols: tradingViewChoices.slice(0, 6).map((choice) => ({
+          s: choice.tvSymbol,
+          d: choice.label,
+        })),
+        originalTitle: "Carteira",
+      },
+      {
+        title: "FX & Commodities",
+        symbols: [
+          { s: "FX:EURUSD", d: "EUR/USD" },
+          { s: "FX:USDJPY", d: "USD/JPY" },
+          { s: "TVC:GOLD", d: "Gold" },
+          { s: "TVC:USOIL", d: "Crude Oil" },
+        ],
+        originalTitle: "FX & Commodities",
+      },
+    ];
+    const tradingViewChartConfig = {
+      autosize: true,
+      symbol: tradingViewSymbol,
+      interval: "D",
+      timezone: "America/Sao_Paulo",
+      theme: "light",
+      style: "1",
+      locale: "pt",
+      enable_publishing: false,
+      allow_symbol_change: true,
+      hide_side_toolbar: false,
+      withdateranges: true,
+      backgroundColor: "#ffffff",
+      gridColor: "rgba(11,31,58,0.08)",
+      studies: [],
+    };
+    const tradingViewTickerConfig = {
+      colorTheme: "light",
+      isTransparent: false,
+      displayMode: "adaptive",
+      locale: "pt",
+      symbols: tradingViewTickerSymbols,
+    };
+    const tradingViewMarketConfig = {
+      colorTheme: "light",
+      dateRange: "12M",
+      showChart: true,
+      locale: "pt",
+      width: "100%",
+      height: "100%",
+      largeChartUrl: "",
+      isTransparent: false,
+      showSymbolLogo: true,
+      showFloatingTooltip: false,
+      plotLineColorGrowing: "rgba(0,85,164,1)",
+      plotLineColorFalling: "rgba(184,134,11,1)",
+      gridLineColor: "rgba(11,31,58,0.06)",
+      scaleFontColor: "rgba(11,31,58,0.72)",
+      belowLineFillColorGrowing: "rgba(0,85,164,0.12)",
+      belowLineFillColorFalling: "rgba(184,134,11,0.12)",
+      belowLineFillColorGrowingBottom: "rgba(0,85,164,0)",
+      belowLineFillColorFallingBottom: "rgba(184,134,11,0)",
+      symbolActiveColor: "rgba(0,85,164,0.12)",
+      tabs: tradingViewMarketTabs,
+    };
+
     return html`
       <${ThemeProvider} theme=${theme}>
         <${CssBaseline} />
         <${GlobalStyles}
           styles=${{
             body: {
-              backgroundColor: "#07111b",
+              backgroundColor: "#eef1f5",
             },
             "#root": {
               minHeight: "100vh",
@@ -2561,9 +3137,10 @@
             position="sticky"
             elevation=${0}
             sx=${{
-              backdropFilter: "blur(18px)",
-              background: "rgba(7,17,27,0.76)",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(16px)",
+              background: "rgba(255,255,255,0.84)",
+              borderBottom: "1px solid rgba(11,31,58,0.12)",
+              color: "#0b1f3a",
             }}
           >
             <${Toolbar} sx=${{ minHeight: 72, gap: 2 }}>
@@ -2572,7 +3149,7 @@
                   variant="overline"
                   sx=${{
                     display: "block",
-                    color: "secondary.main",
+                    color: "#0055a4",
                     letterSpacing: "0.16em",
                     fontWeight: 700,
                   }}
@@ -2583,9 +3160,10 @@
                   variant="h6"
                   sx=${{
                     mt: 0.2,
-                    fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
-                    fontWeight: 700,
+                    fontFamily: '"EB Garamond", Georgia, serif',
+                    fontWeight: 600,
                     letterSpacing: "-0.03em",
+                    color: "#0b1f3a",
                   }}
                 >
                   Global Portfolio Model Runner
@@ -2595,27 +3173,27 @@
                 <${Chip}
                   label=${scenario.label}
                   sx=${{
-                    bgcolor: "rgba(74,163,223,0.14)",
-                    color: "#9dd4ff",
-                    border: "1px solid rgba(74,163,223,0.35)",
+                    bgcolor: "rgba(0,85,164,0.08)",
+                    color: "#0055a4",
+                    border: "1px solid rgba(0,85,164,0.18)",
                     fontWeight: 700,
                   }}
                 />
                 <${Chip}
                   label=${view === "public" ? "Public view" : "Full model"}
                   sx=${{
-                    bgcolor: "rgba(208,139,46,0.14)",
-                    color: "#ffd38d",
-                    border: "1px solid rgba(208,139,46,0.35)",
+                    bgcolor: "rgba(184,134,11,0.08)",
+                    color: "#8d6507",
+                    border: "1px solid rgba(184,134,11,0.18)",
                     fontWeight: 700,
                   }}
                 />
                 <${Chip}
                   label=${formatDate(data.meta?.priceDate)}
                   sx=${{
-                    bgcolor: "rgba(70,209,190,0.14)",
-                    color: "#a4f2e7",
-                    border: "1px solid rgba(70,209,190,0.35)",
+                    bgcolor: "rgba(14,116,144,0.08)",
+                    color: "#0e7490",
+                    border: "1px solid rgba(14,116,144,0.18)",
                     fontWeight: 700,
                   }}
                 />
@@ -2630,7 +3208,7 @@
                   position: "absolute",
                   inset: 0,
                   background:
-                    "radial-gradient(circle at 80% 0%, rgba(208,139,46,0.18), transparent 34%), radial-gradient(circle at 10% 10%, rgba(74,163,223,0.16), transparent 34%)",
+                      "radial-gradient(circle at 80% 0%, rgba(184,134,11,0.12), transparent 34%), radial-gradient(circle at 10% 10%, rgba(0,85,164,0.10), transparent 34%)",
                   pointerEvents: "none",
                 }}
               />
@@ -2642,7 +3220,7 @@
                         variant="overline"
                         sx=${{
                           display: "block",
-                          color: "secondary.main",
+                          color: "#0055a4",
                           letterSpacing: "0.16em",
                           fontWeight: 700,
                         }}
@@ -2653,10 +3231,11 @@
                         variant="h2"
                         sx=${{
                           mt: 1,
-                          fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif',
-                          fontWeight: 700,
-                          letterSpacing: "-0.05em",
-                          lineHeight: 0.96,
+                          fontFamily: '"EB Garamond", Georgia, serif',
+                          fontWeight: 600,
+                          letterSpacing: "-0.04em",
+                          lineHeight: 0.98,
+                          color: "#0b1f3a",
                           fontSize: { xs: "2.4rem", md: "4rem" },
                         }}
                       >
@@ -2690,7 +3269,7 @@
                         sx=${{
                           maxWidth: 360,
                           "& .MuiOutlinedInput-root": {
-                            background: "rgba(255,255,255,0.03)",
+                            background: "#ffffff",
                           },
                         }}
                       />
@@ -2710,7 +3289,7 @@
                           gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
                           "& .MuiToggleButtonGroup-grouped": {
                             borderRadius: 3,
-                            border: "1px solid rgba(255,255,255,0.08) !important",
+                            border: "1px solid rgba(11,31,58,0.12) !important",
                             margin: 0,
                             alignItems: "stretch",
                             justifyContent: "flex-start",
@@ -2727,21 +3306,21 @@
                               value=${item.id}
                               sx=${{
                                 display: "block",
-                                color: "text.primary",
+                                color: "#0b1f3a",
                                 background:
                                   prefs.scenarioId === item.id
-                                    ? "linear-gradient(180deg, rgba(74,163,223,0.16), rgba(255,255,255,0.04))"
-                                    : "rgba(255,255,255,0.03)",
+                                    ? "linear-gradient(180deg, rgba(0,85,164,0.12), rgba(255,255,255,0.96))"
+                                    : "rgba(255,255,255,0.94)",
                               }}
                             >
                               <${Stack} spacing=${0.35} alignItems="flex-start">
-                                <${Typography} sx=${{ fontWeight: 700, fontFamily: '"Space Grotesk", sans-serif' }}>
+                                <${Typography} sx=${{ fontWeight: 700, fontFamily: '"EB Garamond", Georgia, serif' }}>
                                   ${item.label}
                                 </${Typography}>
                                 <${Typography} variant="caption" color="text.secondary" sx=${{ lineHeight: 1.4 }}>
                                   ${item.description}
                                 </${Typography}>
-                                <${Typography} variant="caption" color="secondary.main" sx=${{ mt: 0.3 }}>
+                                <${Typography} variant="caption" sx=${{ mt: 0.3, color: "#0055a4" }}>
                                   Liquidez ${formatPct((Number(item.cashTargetPct) || 0) + (Number(item.xovrTargetPct) || 0) + (Number(item.bondTargetPct) || 0))}
                                 </${Typography}>
                               </${Stack}>
@@ -2760,20 +3339,22 @@
                       sx=${{
                         p: 2.2,
                         borderRadius: 4,
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(11,31,58,0.12)",
+                        background: "#ffffff",
+                        boxShadow: "0 12px 30px rgba(11,31,58,0.06)",
                       }}
                     >
                       <${Stack} spacing=${0.5}>
-                        <${Typography} variant="overline" color="secondary.main" sx=${{ letterSpacing: "0.16em", fontWeight: 700 }}>
+                        <${Typography} variant="overline" sx=${{ letterSpacing: "0.16em", fontWeight: 700, color: "#0055a4" }}>
                           ${view === "public" ? "Leitura publica" : "Leitura do cenario"}
                         </${Typography}>
                         <${Typography}
                           variant="h4"
                           sx=${{
-                            fontFamily: '"Space Grotesk", sans-serif',
-                            fontWeight: 700,
-                            letterSpacing: "-0.04em",
+                            fontFamily: '"EB Garamond", Georgia, serif',
+                            fontWeight: 600,
+                            letterSpacing: "-0.03em",
+                            color: "#0b1f3a",
                           }}
                         >
                           ${scenario.label}
@@ -2823,10 +3404,10 @@
                       severity=${view === "public" ? "info" : "warning"}
                       variant="outlined"
                       sx=${{
-                        borderColor: view === "public" ? "rgba(74,163,223,0.35)" : "rgba(208,139,46,0.35)",
-                        bgcolor: view === "public" ? "rgba(74,163,223,0.08)" : "rgba(208,139,46,0.08)",
+                        borderColor: view === "public" ? "rgba(0,85,164,0.25)" : "rgba(184,134,11,0.25)",
+                        bgcolor: view === "public" ? "rgba(0,85,164,0.06)" : "rgba(184,134,11,0.06)",
                         "& .MuiAlert-icon": {
-                          color: view === "public" ? "#9dd4ff" : "#ffd38d",
+                          color: view === "public" ? "#0055a4" : "#8d6507",
                         },
                       }}
                     >
@@ -2846,9 +3427,9 @@
                     key=${chip}
                     label=${chip}
                     sx=${{
-                      bgcolor: "rgba(255,255,255,0.04)",
-                      color: "text.secondary",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      bgcolor: "rgba(11,31,58,0.04)",
+                      color: "#4b5563",
+                      border: "1px solid rgba(11,31,58,0.12)",
                       fontWeight: 700,
                     }}
                   />
@@ -2868,7 +3449,7 @@
                   "& .MuiTabs-indicator": {
                     height: 3,
                     borderRadius: 999,
-                    background: "linear-gradient(90deg, #4aa3df, #d08b2e)",
+                    background: "linear-gradient(90deg, #0055a4, #b8860b)",
                   },
                   "& .MuiTab-root": {
                     minHeight: 56,
@@ -3062,6 +3643,361 @@
               </${Stack}>
             </${TabPanel}>
 
+            <${TabPanel} active=${currentTab} value="report">
+              <${Stack} spacing=${2.5}>
+                <${SurfaceCard} sx=${{ p: 0, overflow: "hidden" }}>
+                  <${Box}
+                    sx=${{
+                      p: { xs: 2.5, md: 3.5 },
+                      borderBottom: "1px solid rgba(11,31,58,0.12)",
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,247,244,0.96) 100%)",
+                    }}
+                  >
+                    <${Typography}
+                      variant="overline"
+                      sx=${{
+                        display: "block",
+                        color: "#0055a4",
+                        letterSpacing: "0.18em",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Relatório HTML dinâmico
+                    </${Typography}>
+                    <${Typography}
+                      variant="h3"
+                      sx=${{
+                        mt: 1,
+                        fontFamily: '"EB Garamond", Georgia, serif',
+                        fontWeight: 600,
+                        lineHeight: 1.05,
+                        color: "#0b1f3a",
+                      }}
+                    >
+                      ${parsedReport.title}
+                    </${Typography}>
+                    <${Typography}
+                      variant="body1"
+                      sx=${{
+                        mt: 1.2,
+                        color: "text.secondary",
+                        lineHeight: 1.8,
+                        maxWidth: 980,
+                        fontWeight: 300,
+                      }}
+                    >
+                      ${parsedReport.subtitle}
+                    </${Typography}>
+                  </${Box}>
+
+                  <${Box} sx=${{ p: { xs: 2.5, md: 3.5 } }}>
+                    <${Grid} container spacing=${2}>
+                      ${parsedReport.metrics.map(
+                        (metric) => html`
+                          <${Grid} item xs=${12} sm=${6} lg=${3} key=${metric.label}>
+                            <${MetricCard}
+                              accent=${metric.label === "Seções"
+                                ? "#0055a4"
+                                : metric.label === "Parágrafos"
+                                  ? "#0e7490"
+                                  : metric.label === "Citações"
+                                    ? "#b8860b"
+                                    : "#c0392b"}
+                              label=${metric.label}
+                              value=${integerFormatter.format(metric.value)}
+                              helper="Extraído automaticamente do HTML."
+                            />
+                          </${Grid}>
+                        `
+                      )}
+                    </${Grid}>
+
+                    ${view === "full"
+                      ? html`
+                          <${Box} sx=${{ mt: 2.5 }}>
+                            <${SectionTitle}
+                              eyebrow="Ingestão"
+                              title="Cole o HTML do relatório e converta-o em blocos vivos"
+                              subtitle="O parser reconhece títulos, parágrafos, citações e tabelas para transformar o documento em conteúdo navegável."
+                            />
+                            <${Stack} spacing=${1.2}>
+                              <${TextField}
+                                value=${reportDraft}
+                                onChange=${(event) =>
+                                  setPrefs((current) => ({
+                                    ...current,
+                                    reportDraft: event.target.value,
+                                  }))}
+                                fullWidth=${true}
+                                multiline=${true}
+                                minRows=${12}
+                                label="HTML do relatório"
+                                helperText="Pode colar o HTML aqui ou importar um arquivo para leitura editorial."
+                                sx=${{
+                                  "& .MuiOutlinedInput-root": {
+                                    background: "#ffffff",
+                                  },
+                                }}
+                              />
+                              <${Stack} direction="row" spacing=${1} flexWrap="wrap">
+                                <${Button} variant="contained" onClick=${applyReportDraft}>
+                                  Aplicar HTML
+                                </${Button}>
+                                <${Button} variant="outlined" onClick=${resetReportSample}>
+                                  Usar amostra
+                                </${Button}>
+                                <${Button} component="label" variant="outlined">
+                                  Importar HTML
+                                  <input hidden type="file" accept=".html,.htm,text/html" onChange=${handleReportHtmlUpload} />
+                                </${Button}>
+                              </${Stack}>
+                              ${reportNotice
+                                ? html`<${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(0,85,164,0.06)" }}>
+                                    ${reportNotice}
+                                  </${Alert}>`
+                                : null}
+                            </${Stack}>
+                          </${Box}>
+                        `
+                      : null}
+                  </${Box}>
+                </${SurfaceCard}>
+
+                <${ReportSectionCard}
+                  number="01"
+                  title="Outline convertido em estrutura navegável"
+                  lead="Cada heading vira uma seção viva. O conteúdo do HTML não fica mais preso no documento original: ele entra no fluxo da ferramenta e pode orientar decisões, resumos e próximos passos."
+                >
+                  <${Stack} spacing=${1.2}>
+                    ${parsedReport.sections.length
+                      ? parsedReport.sections.map(
+                          (section, index) => html`
+                            <${Paper}
+                              key=${section.id}
+                              elevation=${0}
+                              sx=${{
+                                p: 1.8,
+                                borderRadius: 3,
+                                border: "1px solid rgba(11,31,58,0.12)",
+                                background: "#ffffff",
+                              }}
+                            >
+                              <${Stack} direction="row" justifyContent="space-between" spacing=${2} alignItems="flex-start">
+                                <${Box}>
+                                  <${Typography}
+                                    variant="overline"
+                                    sx=${{
+                                      display: "block",
+                                      color: "#0055a4",
+                                      letterSpacing: "0.18em",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    ${String(index + 1).padStart(2, "0")}
+                                  </${Typography}>
+                                  <${Typography}
+                                    variant="h6"
+                                    sx=${{
+                                      fontFamily: '"EB Garamond", Georgia, serif',
+                                      fontWeight: 600,
+                                      color: "#0b1f3a",
+                                    }}
+                                  >
+                                    ${section.title}
+                                  </${Typography}>
+                                </${Box}>
+                                <${Chip}
+                                  size="small"
+                                  label=${section.level === 2 ? "Seção" : "Subseção"}
+                                  sx=${{
+                                    bgcolor: "rgba(11,31,58,0.04)",
+                                    color: "#0b1f3a",
+                                    border: "1px solid rgba(11,31,58,0.12)",
+                                    fontWeight: 700,
+                                  }}
+                                />
+                              </${Stack}>
+                              <${Typography} variant="body2" color="text.secondary" sx=${{ mt: 1, lineHeight: 1.7 }}>
+                                ${section.summary}
+                              </${Typography}>
+                            </${Paper}>
+                          `
+                        )
+                      : html`
+                          <${Alert} severity="info" variant="outlined" sx=${{ bgcolor: "rgba(0,85,164,0.06)" }}>
+                            Nenhuma seção foi extraída ainda. Cole ou importe um HTML para começar.
+                          </${Alert}>
+                        `}
+                  </${Stack}>
+                </${ReportSectionCard}>
+
+                <${ReportSectionCard}
+                  number="02"
+                  title="Exhibit de decisão"
+                  lead="O relatório agora alimenta um painel que combina teses, risco e leitura de mercado. Isso aproxima o documento estático da rotina operacional."
+                >
+                  <${Grid} container spacing=${2}>
+                    <${Grid} item xs=${12} lg=${6}>
+                      <${SimpleBarChart}
+                        title="Top ideas do modelo"
+                        subtitle="A distribuição de upside vira um gráfico rápido para priorização."
+                        items=${topIdeas.slice(0, 6).map((idea) => ({
+                          label: idea.symbol,
+                          value: Number(idea.upsidePct) || 0,
+                          valueLabel: `${formatPct(idea.upsidePct)} upside`,
+                          accent: getStudyBucketAccent(idea.studyBucket),
+                        }))}
+                      />
+                    </${Grid}>
+                    <${Grid} item xs=${12} lg=${6}>
+                      <${Paper}
+                        elevation=${0}
+                        sx=${{
+                          p: 2.25,
+                          borderRadius: 4,
+                          border: "1px solid rgba(11,31,58,0.12)",
+                          background: "#ffffff",
+                          boxShadow: "0 12px 30px rgba(11,31,58,0.06)",
+                          height: "100%",
+                        }}
+                      >
+                        <${Stack} spacing=${1.5}>
+                          <${Typography}
+                            variant="overline"
+                            sx=${{ color: "#0055a4", letterSpacing: "0.18em", fontWeight: 700 }}
+                          >
+                            Insight
+                          </${Typography}>
+                          <${Typography}
+                            variant="h6"
+                            sx=${{
+                              fontFamily: '"EB Garamond", Georgia, serif',
+                              fontWeight: 600,
+                              color: "#0b1f3a",
+                            }}
+                          >
+                            ${parsedReport.quotes[0] || topIdeas[0]?.thesis || "A tese entra no fluxo operacional assim que o HTML é lido."}
+                          </${Typography}>
+                          <${Divider} />
+                          <${Stack} spacing=${1}>
+                            <${Typography} variant="body2" color="text.secondary" sx=${{ lineHeight: 1.7 }}>
+                              ${data.study?.principles?.[0] || "O documento é convertido em blocos, métricas e notas de decisão."}
+                            </${Typography}>
+                            <${Typography} variant="body2" color="text.secondary" sx=${{ lineHeight: 1.7 }}>
+                              ${data.study?.principles?.[3] || "A camada de leitura respeita liquidez, concentração e risco cambial."}
+                            </${Typography}>
+                          </${Stack}>
+                        </${Stack}>
+                      </${Paper}>
+                    </${Grid}>
+                  </${Grid}>
+                </${ReportSectionCard}>
+
+                <${ReportSectionCard}
+                  number="03"
+                  title="Risco e roadmap"
+                  lead="A incorporação do HTML não é só estética: ela precisa caber dentro dos limites do modelo e apontar para próximos passos executáveis."
+                >
+                  <${Grid} container spacing=${2}>
+                    <${Grid} item xs=${12} lg=${7}>
+                      <${Grid} container spacing=${1.5}>
+                        ${riskRecommendations.slice(0, 4).map(
+                          (note, index) => html`
+                            <${Grid} item xs=${12} sm=${6} key=${note}>
+                              <${Paper}
+                                elevation=${0}
+                                sx=${{
+                                  p: 1.8,
+                                  borderRadius: 3,
+                                  border: "1px solid rgba(11,31,58,0.12)",
+                                  background: "#ffffff",
+                                }}
+                              >
+                                <${Typography}
+                                  variant="overline"
+                                  sx=${{
+                                    display: "block",
+                                    color: index % 2 === 0 ? "#0055a4" : "#b8860b",
+                                    letterSpacing: "0.16em",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  Limite
+                                </${Typography}>
+                                <${Typography} variant="body2" sx=${{ mt: 0.5, lineHeight: 1.7, color: "#0b1f3a" }}>
+                                  ${note}
+                                </${Typography}>
+                              </${Paper}>
+                            </${Grid}>
+                          `
+                        )}
+                      </${Grid}>
+                    </${Grid}>
+                    <${Grid} item xs=${12} lg=${5}>
+                      <${Paper}
+                        elevation=${0}
+                        sx=${{
+                          p: 2.25,
+                          borderRadius: 4,
+                          border: "1px solid rgba(11,31,58,0.12)",
+                          background: "#ffffff",
+                          boxShadow: "0 12px 30px rgba(11,31,58,0.06)",
+                        }}
+                      >
+                        <${Stack} spacing=${1.5}>
+                          <${Typography}
+                            variant="overline"
+                            sx=${{ color: "#0055a4", letterSpacing: "0.18em", fontWeight: 700 }}
+                          >
+                            Roadmap
+                          </${Typography}>
+                          ${[
+                            {
+                              title: "Fase 1",
+                              body: "Receber HTML, resumir o relatório e conectar ao painel de carteira.",
+                            },
+                            {
+                              title: "Fase 2",
+                              body: "Usar TradingView para preços vivos, momentum e leitura macro em tempo real.",
+                            },
+                            {
+                              title: "Fase 3",
+                              body: "Fechar o ciclo de decisão com risco, cenários e publicação unificada.",
+                            },
+                          ].map((phase) => html`
+                            <${Box}
+                              key=${phase.title}
+                              sx=${{
+                                p: 1.5,
+                                borderRadius: 2,
+                                border: "1px solid rgba(11,31,58,0.10)",
+                                background: "rgba(11,31,58,0.03)",
+                              }}
+                            >
+                              <${Typography}
+                                variant="subtitle2"
+                                sx=${{
+                                  fontWeight: 700,
+                                  color: "#0b1f3a",
+                                  fontFamily: '"EB Garamond", Georgia, serif',
+                                }}
+                              >
+                                ${phase.title}
+                              </${Typography}>
+                              <${Typography} variant="body2" color="text.secondary" sx=${{ mt: 0.4, lineHeight: 1.6 }}>
+                                ${phase.body}
+                              </${Typography}>
+                            </${Box}>
+                          `)}
+                        </${Stack}>
+                      </${Paper}>
+                    </${Grid}>
+                  </${Grid}>
+                </${ReportSectionCard}>
+              </${Stack}>
+            </${TabPanel}>
+
             <${TabPanel} active=${currentTab} value="market">
               <${Stack} spacing=${2.5}>
                 <${SurfaceCard} sx=${{ p: 2.5 }}>
@@ -3082,8 +4018,8 @@
                     elevation=${0}
                     sx=${{
                       borderRadius: 3,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(11,31,58,0.12)",
+                      background: "rgba(11,31,58,0.03)",
                     }}
                   >
                     <${Table} stickyHeader size="small" sx=${{ minWidth: 980 }}>
@@ -3107,6 +4043,75 @@
                       </${TableBody}>
                     </${Table}>
                   </${TableContainer}>
+                </${SurfaceCard}>
+              </${Stack}>
+            </${TabPanel}>
+
+            <${TabPanel} active=${currentTab} value="tradingview">
+              <${Stack} spacing=${2.5}>
+                <${SurfaceCard} sx=${{ p: 2.5 }}>
+                  <${SectionTitle}
+                    eyebrow="Live markets"
+                    title="TradingView para decisão ao vivo"
+                    subtitle="Os widgets abaixo trazem gráfico avançado, ticker tape e market overview para leitura rápida antes da alocação."
+                    action=${html`
+                      <${Button}
+                        component="a"
+                        href="https://www.tradingview.com/markets/"
+                        target="_blank"
+                        rel="noreferrer"
+                        variant="outlined"
+                      >
+                        Abrir mercados
+                      </${Button}>
+                    `}
+                  />
+
+                  <${Stack} spacing=${1.5} sx=${{ mb: 2 }}>
+                    <${FormControl} size="small" sx=${{ maxWidth: 420 }}>
+                      <${Select} value=${prefs.tradingViewSymbol} onChange=${handleTradingViewSymbolChange}>
+                        ${tradingViewChoices.map(
+                          (choice) => html`
+                            <${MenuItem} key=${choice.id} value=${choice.tvSymbol}>
+                              ${choice.label} · ${choice.tvSymbol}
+                            </${MenuItem}>
+                          `
+                        )}
+                      </${Select}>
+                    </${FormControl}>
+                    <${Chip}
+                      label=${`Símbolo ativo: ${tradingViewSymbol}`}
+                      sx=${{
+                        bgcolor: "rgba(0,85,164,0.08)",
+                        color: "#0055a4",
+                        border: "1px solid rgba(0,85,164,0.18)",
+                        fontWeight: 700,
+                      }}
+                    />
+                  </${Stack}>
+
+                  <${TradingViewEmbed}
+                    widget="ticker-tape"
+                    config=${tradingViewTickerConfig}
+                    minHeight=${120}
+                  />
+
+                  <${Grid} container spacing=${2} sx=${{ mt: 1 }}>
+                    <${Grid} item xs=${12} lg=${8}>
+                      <${TradingViewEmbed}
+                        widget="advanced-chart"
+                        config=${tradingViewChartConfig}
+                        minHeight=${620}
+                      />
+                    </${Grid}>
+                    <${Grid} item xs=${12} lg=${4}>
+                      <${TradingViewEmbed}
+                        widget="market-overview"
+                        config=${tradingViewMarketConfig}
+                        minHeight=${620}
+                      />
+                    </${Grid}>
+                  </${Grid}>
                 </${SurfaceCard}>
               </${Stack}>
             </${TabPanel}>
@@ -3140,7 +4145,7 @@
                         "& .MuiToggleButton-root": {
                           textTransform: "none",
                           fontWeight: 700,
-                          borderColor: "rgba(255,255,255,0.08)",
+                          borderColor: "rgba(11,31,58,0.12)",
                         },
                       }}
                     >
@@ -3170,8 +4175,8 @@
                           elevation=${0}
                           sx=${{
                             borderRadius: 3,
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(11,31,58,0.12)",
+                            background: "rgba(11,31,58,0.03)",
                           }}
                         >
                           <${Table} stickyHeader size="small" sx=${{ minWidth: 1080 }}>
@@ -3247,9 +4252,9 @@
                               sx=${{
                                 mb: 1,
                                 mr: 1,
-                                bgcolor: "rgba(255,255,255,0.04)",
-                                border: "1px solid rgba(255,255,255,0.08)",
-                                color: "text.primary",
+                                bgcolor: "rgba(11,31,58,0.04)",
+                                border: "1px solid rgba(11,31,58,0.12)",
+                                color: "#0b1f3a",
                                 fontWeight: 600,
                               }}
                             />
@@ -3328,7 +4333,7 @@
                       "& .MuiToggleButton-root": {
                         textTransform: "none",
                         fontWeight: 700,
-                        borderColor: "rgba(255,255,255,0.08)",
+                        borderColor: "rgba(11,31,58,0.12)",
                         borderRadius: 999,
                         px: 2,
                       },
@@ -3394,9 +4399,9 @@
                                     size="small"
                                     label=${activeSectorGroup.bestPick ? `Top: ${activeSectorGroup.bestPick.symbol}` : "Sem top pick"}
                                     sx=${{
-                                      bgcolor: "rgba(255,255,255,0.05)",
+                                      bgcolor: "rgba(11,31,58,0.05)",
                                       color: "text.secondary",
-                                      border: "1px solid rgba(255,255,255,0.08)",
+                                      border: "1px solid rgba(11,31,58,0.12)",
                                       fontWeight: 700,
                                     }}
                                   />
@@ -3411,8 +4416,8 @@
                                   elevation=${0}
                                   sx=${{
                                     borderRadius: 3,
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                    background: "rgba(255,255,255,0.03)",
+                                    border: "1px solid rgba(11,31,58,0.12)",
+                                    background: "rgba(11,31,58,0.03)",
                                   }}
                                 >
                                   <${Table} stickyHeader size="small" sx=${{ minWidth: 520 }}>
@@ -3648,7 +4653,7 @@
                               sx=${{
                                 maxWidth: 360,
                                 "& .MuiOutlinedInput-root": {
-                                  background: "rgba(255,255,255,0.03)",
+                                  background: "rgba(11,31,58,0.03)",
                                 },
                               }}
                             />
@@ -3753,8 +4758,8 @@
                                   elevation=${0}
                                   sx=${{
                                     borderRadius: 3,
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                    background: "rgba(255,255,255,0.03)",
+                                    border: "1px solid rgba(11,31,58,0.12)",
+                                    background: "rgba(11,31,58,0.03)",
                                   }}
                                 >
                                   <${Table} stickyHeader size="small" sx=${{ minWidth: 760 }}>
@@ -3818,8 +4823,8 @@
                         elevation=${0}
                         sx=${{
                           borderRadius: 3,
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(11,31,58,0.12)",
+                          background: "rgba(11,31,58,0.03)",
                         }}
                       >
                         <${Table} stickyHeader size="small" sx=${{ minWidth: 760 }}>
@@ -3855,8 +4860,8 @@
                         elevation=${0}
                         sx=${{
                           borderRadius: 3,
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(11,31,58,0.12)",
+                          background: "rgba(11,31,58,0.03)",
                         }}
                       >
                         <${Table} stickyHeader size="small" sx=${{ minWidth: 760 }}>
@@ -3910,8 +4915,8 @@
                         key=${item}
                         label=${item}
                         sx=${{
-                          bgcolor: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
+                          bgcolor: "rgba(11,31,58,0.04)",
+                          border: "1px solid rgba(11,31,58,0.12)",
                           color: "text.secondary",
                         }}
                       />
@@ -3928,39 +4933,39 @@
 
   const theme = createTheme({
     palette: {
-      mode: "dark",
-      primary: { main: "#4aa3df", light: "#9dd4ff", dark: "#2c78b2" },
-      secondary: { main: "#d08b2e", light: "#ffd38d", dark: "#9a6114" },
+      mode: "light",
+      primary: { main: "#0055a4", light: "#4a88cf", dark: "#0b1f3a" },
+      secondary: { main: "#b8860b", light: "#d8b45a", dark: "#8d6507" },
       background: {
-        default: "#07111b",
-        paper: "rgba(10,16,28,0.88)",
+        default: "#eef1f5",
+        paper: "#ffffff",
       },
       text: {
-        primary: "#eff5ff",
-        secondary: "#9ba8bb",
+        primary: "#0b1f3a",
+        secondary: "#6b7280",
       },
-      success: { main: "#46d1be" },
-      warning: { main: "#d08b2e" },
-      error: { main: "#ff7a59" },
-      info: { main: "#7e8cff" },
+      success: { main: "#0e7490" },
+      warning: { main: "#b8860b" },
+      error: { main: "#c0392b" },
+      info: { main: "#4a88cf" },
     },
     shape: {
       borderRadius: 16,
     },
     typography: {
-      fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
-      h1: { fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif' },
-      h2: { fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif' },
-      h3: { fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif' },
-      h4: { fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif' },
-      h5: { fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif' },
-      h6: { fontFamily: '"Space Grotesk", "IBM Plex Sans", sans-serif' },
+      fontFamily: '"Inter", "Segoe UI", sans-serif',
+      h1: { fontFamily: '"EB Garamond", Georgia, serif' },
+      h2: { fontFamily: '"EB Garamond", Georgia, serif' },
+      h3: { fontFamily: '"EB Garamond", Georgia, serif' },
+      h4: { fontFamily: '"EB Garamond", Georgia, serif' },
+      h5: { fontFamily: '"EB Garamond", Georgia, serif' },
+      h6: { fontFamily: '"EB Garamond", Georgia, serif' },
     },
     components: {
       MuiCssBaseline: {
         styleOverrides: {
           body: {
-            backgroundColor: "#07111b",
+            backgroundColor: "#eef1f5",
           },
         },
       },
