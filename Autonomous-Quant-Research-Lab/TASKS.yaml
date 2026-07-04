@@ -1,0 +1,239 @@
+tasks:
+  - id: TASK-0001
+    milestone: M000
+    title: Bootstrap repository structure
+    status: done
+    acceptance:
+      - Repository has documented directory structure
+      - README and base docs exist
+
+  - id: TASK-0002
+    milestone: M001
+    title: Implement aqrl.core.config
+    status: done
+    acceptance:
+      - Config class supports defaults, env overrides, and YAML loading
+      - Unit tests cover default and override behavior
+      - Fully typed and documented
+
+  - id: TASK-0003
+    milestone: M001
+    title: Implement aqrl.core.logger
+    status: done
+    acceptance:
+      - Structured console logger exists
+      - File logger optional
+      - Tests verify logger creation
+
+  - id: TASK-0004
+    milestone: M001
+    title: Implement aqrl.core.events
+    status: done
+    acceptance:
+      - Event class and EventBus exist
+      - Subscribe, publish, unsubscribe supported
+      - Tests cover synchronous event dispatch
+
+  - id: TASK-0005
+    milestone: M001
+    title: Implement aqrl.core.registry
+    status: done
+    acceptance:
+      - Generic registry supports add, get, list, remove
+      - Duplicate registration handled with explicit exception
+
+  - id: TASK-0006
+    milestone: M001
+    title: Implement aqrl.core.plugin_manager
+    status: done
+    acceptance:
+      - Plugin protocol defined
+      - Plugin manager can register and initialize plugins
+
+  - id: TASK-0007
+    milestone: M001
+    title: Implement aqrl.core.scheduler
+    status: done
+    acceptance:
+      - Simple in-process task scheduler exists
+      - Tests cover task registration and execution
+
+  - id: TASK-0008
+    milestone: M002
+    title: Implement canonical MarketState
+    status: done
+    acceptance:
+      - MarketState model supports prices, returns, volatility, metadata
+      - Validation with pydantic or dataclasses
+
+  - id: TASK-0009
+    milestone: M003
+    title: Implement aqrl.data.base_loader
+    status: done
+    acceptance:
+      - Shared load request abstraction exists
+      - Load requests validate and normalize inputs
+
+  - id: TASK-0010
+    milestone: M003
+    title: Implement aqrl.data.cache
+    status: done
+    acceptance:
+      - Persistent cache stores and restores Python objects
+      - Cache entries can be listed, deleted, and cleared
+
+  - id: TASK-0011
+    milestone: M003
+    title: Implement aqrl.data.feature_store
+    status: done
+    acceptance:
+      - Feature store persists named pandas DataFrames
+      - Feature metadata and snapshots are retrievable
+
+  - id: TASK-0012
+    milestone: M003
+    title: Implement aqrl.data.yahoo_loader
+    status: done
+    acceptance:
+      - Yahoo Finance chart URL builder exists
+      - Yahoo chart payload parsing returns canonical DataFrames
+      - Loader optionally reuses persistent cache
+
+  - id: TASK-0013
+    milestone: M004
+    title: Stabilize canonical Git workspace and quality gates
+    status: done
+    acceptance:
+      - Canonical Git-backed workspace is documented
+      - CI badge is visible in README
+      - poetry.lock is committed for reproducible installs
+      - Pre-commit runs Ruff, Black, and MyPy
+
+  - id: TASK-0014
+    milestone: M004
+    title: Implement dataset registry
+    status: done
+    acceptance:
+      - Dataset metadata model supports name, version, source, schema, and storage URI
+      - Registry can add, retrieve, list, and deprecate datasets
+      - Tests cover duplicate registration and missing dataset lookup
+
+  - id: TASK-0015
+    milestone: M004
+    title: Add DuckDB and Parquet market-data persistence
+    status: done
+    acceptance:
+      - Market data can be written to Parquet partitions
+      - DuckDB can query persisted datasets
+      - Tests cover write, read, overwrite, and missing data paths
+
+  - id: TASK-0016
+    milestone: M004
+    title: Implement data quality validation checks
+    status: done
+    acceptance:
+      - Data quality report covers missing values, duplicate timestamps, monotonic index, and price sanity checks
+      - Validation failures are structured and machine-readable
+      - Tests cover passing and failing datasets
+
+  - id: TASK-0017
+    milestone: M005
+    title: Implement backtest engine MVP
+    status: done
+    acceptance:
+      - Backtest engine accepts market data, strategy signals, initial capital, and transaction costs
+      - Engine returns equity curve, positions, trades, and summary metrics
+      - Tests cover deterministic strategy output and transaction-cost effects
+
+  - id: TASK-0018
+    milestone: M005
+    title: Define strategy interface and baseline strategies
+    status: done
+    acceptance:
+      - Strategy protocol defines fit and generate_signals contracts
+      - Baseline buy-and-hold and moving-average crossover strategies exist
+      - Tests cover signal alignment and reproducibility
+
+  - id: TASK-0019
+    milestone: M006
+    title: Implement return analytics and risk metrics
+    status: done
+    acceptance:
+      - Return helpers support simple and log returns
+      - Metrics cover volatility, drawdown, VaR, CVaR, Sharpe, and Sortino
+      - Tests cover deterministic calculations and invalid inputs
+
+  - id: TASK-0020
+    milestone: M006
+    title: Implement portfolio constraints and rebalance plans
+    status: done
+    acceptance:
+      - Constraints validate min/max weights and net exposure
+      - Rebalancer generates target weights, trades, and turnover
+      - Tests cover normalization, violations, tolerance, and empty inputs
+
+  - id: TASK-0021
+    milestone: M006
+    title: Connect backtest summaries to risk metrics
+    status: done
+    acceptance:
+      - Backtest summary reuses the canonical risk-summary helper
+      - Existing backtest behavior remains deterministic
+      - Tests cover risk metrics in backtest summaries
+
+  - id: TASK-0022
+    milestone: M007
+    title: Add release checkpoint and executable examples
+    status: done
+    acceptance:
+      - CHANGELOG summarizes M004 through M006 capabilities
+      - Examples cover data pipeline, strategy backtest, and risk/portfolio rebalance
+      - Example scripts run without network access
+
+  - id: TASK-0023
+    milestone: M007
+    title: Implement market feature engine
+    status: done
+    acceptance:
+      - Feature engine emits returns, rolling return, volatility, momentum, and drawdown
+      - Feature windows and price column are configurable
+      - Tests cover deterministic outputs and invalid inputs
+
+  - id: TASK-0024
+    milestone: M007
+    title: Implement simple market regime classifier
+    status: done
+    acceptance:
+      - Regime classifier labels bull, bear, and neutral trend states
+      - Volatility classifier labels high and low volatility states
+      - Tests cover threshold behavior and missing feature columns
+
+  - id: TASK-0025
+    milestone: M007
+    title: Create local client view for model interaction
+    status: done
+    acceptance:
+      - Client view serves a local HTML interface without extra dependencies
+      - JSON endpoint runs AQRL strategy, backtest, risk, and rebalance model flow
+      - Tests cover deterministic demo model payloads
+
+  - id: TASK-0026
+    milestone: M008
+    title: Add backtest reporting artifact exports
+    status: done
+    acceptance:
+      - Backtest results export summary JSON, CSV tables, Markdown, HTML, and manifest
+      - Artifact writer validates run names and creates deterministic output paths
+      - Tests cover generated files and summary payloads
+
+  - id: TASK-0027
+    milestone: M008
+    title: Harden local client view launch and interaction
+    status: done
+    acceptance:
+      - Client view exposes health endpoints and a typed CLI
+      - Browser UI includes equity chart and JSON download
+      - Tests cover real local HTTP responses
+
+
+

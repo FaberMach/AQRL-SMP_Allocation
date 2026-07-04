@@ -1,11 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  color-scheme: dark;
-  --page-bg: #07111b;
-  --page-bg-2: #0b1726;
-  --page-ink: #eff5ff;
-  --page-muted: #9ba8bb;
+  color-scheme: light;
+  --page-bg: #eef1f5;
+  --page-bg-2: #f7f8fb;
+  --page-ink: #0b1f3a;
+  --page-muted: #6b7280;
 }
 
 *,
@@ -23,11 +23,11 @@ body {
   min-height: 100vh;
   color: var(--page-ink);
   background:
-    radial-gradient(circle at 12% 8%, rgba(80, 162, 255, 0.18), transparent 24%),
-    radial-gradient(circle at 88% 4%, rgba(208, 139, 46, 0.2), transparent 20%),
-    radial-gradient(circle at 80% 62%, rgba(126, 140, 255, 0.12), transparent 22%),
-    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-2) 52%, #060b12 100%);
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    radial-gradient(circle at 12% 8%, rgba(0, 85, 164, 0.08), transparent 24%),
+    radial-gradient(circle at 88% 4%, rgba(184, 134, 11, 0.08), transparent 20%),
+    radial-gradient(circle at 80% 62%, rgba(14, 116, 144, 0.08), transparent 22%),
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-2) 52%, #ffffff 100%);
+  font-family: "Inter", "Segoe UI", sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -50,13 +50,13 @@ body::after {
 body::before {
   top: -8rem;
   left: -10rem;
-  background: radial-gradient(circle, rgba(74, 163, 223, 0.28), transparent 68%);
+  background: radial-gradient(circle, rgba(0, 85, 164, 0.14), transparent 68%);
 }
 
 body::after {
   right: -11rem;
   top: 6rem;
-  background: radial-gradient(circle, rgba(208, 139, 46, 0.24), transparent 68%);
+  background: radial-gradient(circle, rgba(184, 134, 11, 0.12), transparent 68%);
 }
 
 #root {
@@ -79,11 +79,11 @@ textarea {
 code {
   padding: 0.18rem 0.35rem;
   border-radius: 0.45rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(11, 31, 58, 0.06);
 }
 
 ::selection {
-  background: rgba(74, 163, 223, 0.28);
+  background: rgba(0, 85, 164, 0.18);
 }
 
 ::-webkit-scrollbar {
@@ -92,13 +92,13 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(11, 31, 58, 0.04);
 }
 
 ::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(11, 31, 58, 0.2);
   background-clip: content-box;
 }
 

@@ -13,9 +13,11 @@ Aplicacao local para rodar um modelo de gestao de carteiras globais com base no 
 - Permite alternar entre cenarios de alocacao: `Base do estudo`, `Defensivo global` e `Convexidade`.
 - Recalcula pesos, gaps e valores-alvo em tempo real a partir do capital informado.
 - Aceita importacao de carteira via CSV ou entrada manual em tela e simula o cenario do modelo sobre essa carteira.
+- Aceita leitura de HTML de relatório e converte o documento em seções, métricas e blocos editoriais vivos.
 - Exibe leitura setorial da watchlist, com foco em stock picking por buckets e prioridade.
 - Inclui um painel de risco com limites de liquidez, concentracao, FX e residuais.
 - Inclui precos globais de acoes com conversao de moeda para USD, cobrindo ativos em USD, CAD, AUD e GBp/GBP.
+- Inclui uma aba de TradingView com ticker tape, advanced chart e market overview para preços vivos.
 - Mostra liquidez, concentracao, exposicao geografica e exposicao por moeda.
 - Destaca posicoes residuais fora da cesta principal para nao mascarar risco.
 - Exibe o blueprint institucional do estudo e as cinco teses mais convexas.
@@ -33,7 +35,7 @@ Depois abra:
 - Celular na mesma rede Wi-Fi: use o IP da maquina no formato `http://IP:8000`
 - Versao publica online: <https://fabermach.github.io/AQRL-SMP_Allocation/>
 
-No modo completo voce encontra as abas `Simulador`, `Setores` e `Risco` alem do fluxo atual de resumo, mercado, execucao, estudo e universo.
+No modo completo voce encontra as abas `Relatório`, `TradingView`, `Simulador`, `Setores` e `Risco` alem do fluxo atual de resumo, mercado, execucao, estudo e universo.
 
 Se o IP da maquina mudar, rode:
 
@@ -56,6 +58,24 @@ e use o IP da interface Wi-Fi.
 - `generate_reports.py`: cria relatorio executivo e cenarios versionados em JSON.
 - `dashboard/`: app HTML/CSS/JS sem dependencias externas.
 - `portfolio_rebalance_analysis.py`: gera os CSVs de precos, holdings, watchlist e proposta de rebalanceamento.
+
+## Base AQRL incorporada
+
+A base completa do Autonomous Quant Research Lab agora vive dentro deste repositorio em `Autonomous-Quant-Research-Lab/`.
+
+- `Autonomous-Quant-Research-Lab/aqrl/`: pacote Python com core, dados, features, portfolio, risco, research e dashboards.
+- `Autonomous-Quant-Research-Lab/aqrl/dashboards/client_view.py`: client view local com backtest, regime e rebalance.
+- `Autonomous-Quant-Research-Lab/tests/`: cobertura automatizada do pacote AQRL.
+- `Autonomous-Quant-Research-Lab/scripts/start_client_view.ps1`: atalho para subir a visao local.
+
+Para trabalhar nessa base:
+
+```powershell
+cd Autonomous-Quant-Research-Lab
+poetry install
+poetry run python -m aqrl.dashboards.client_view --open
+poetry run pytest
+```
 
 ## Regenerar os dados
 
