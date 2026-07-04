@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Environments
+.venv/
+venv/
+.env
+.env.*
+
+# Data and reports
+data/raw/
+data/processed/
+reports/generated/
+cache/
+.cache/
+artifacts/
+logs/
+notebooks/.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

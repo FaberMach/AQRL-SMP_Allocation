@@ -59,6 +59,24 @@ e use o IP da interface Wi-Fi.
 - `dashboard/`: app HTML/CSS/JS sem dependencias externas.
 - `portfolio_rebalance_analysis.py`: gera os CSVs de precos, holdings, watchlist e proposta de rebalanceamento.
 
+## Base AQRL incorporada
+
+A base completa do Autonomous Quant Research Lab agora vive dentro deste repositorio em `Autonomous-Quant-Research-Lab/`.
+
+- `Autonomous-Quant-Research-Lab/aqrl/`: pacote Python com core, dados, features, portfolio, risco, research e dashboards.
+- `Autonomous-Quant-Research-Lab/aqrl/dashboards/client_view.py`: client view local com backtest, regime e rebalance.
+- `Autonomous-Quant-Research-Lab/tests/`: cobertura automatizada do pacote AQRL.
+- `Autonomous-Quant-Research-Lab/scripts/start_client_view.ps1`: atalho para subir a visao local.
+
+Para trabalhar nessa base:
+
+```powershell
+cd Autonomous-Quant-Research-Lab
+poetry install
+poetry run python -m aqrl.dashboards.client_view --open
+poetry run pytest
+```
+
 ## Regenerar os dados
 
 Fluxo completo:

@@ -1,0 +1,50 @@
+project:
+  name: AQRL
+  full_name: Autonomous Quant Research Lab
+  version: 0.1.0
+  python: ">=3.12"
+  repository: https://github.com/FaberMach/Autonomous-Quant-Research-Lab
+
+architecture:
+  style:
+    - clean_architecture
+    - domain_driven_design
+    - hexagonal_architecture
+    - plugin_architecture
+  layers:
+    infrastructure:
+      packages: [aqrl.core, aqrl.common, aqrl.utils]
+    financial_core:
+      packages: [aqrl.data, aqrl.features, aqrl.portfolio, aqrl.risk, aqrl.execution, aqrl.optimization]
+    intelligence:
+      packages: [aqrl.agents, aqrl.game_theory, aqrl.world_model, aqrl.digital_twin, aqrl.llm]
+    applications:
+      packages: [aqrl.dashboards, notebooks, scripts]
+
+quality:
+  formatter: black
+  linter: ruff
+  type_checker: mypy
+  tests: pytest
+  docstring_style: google
+  minimum_python: "3.12"
+
+modules:
+  core:
+    purpose: Infrastructure kernel
+    planned_files: [config.py, logger.py, events.py, registry.py, plugin_manager.py, scheduler.py, constants.py, exceptions.py, types.py, utils.py]
+  data:
+    purpose: Data access and market state
+    planned_files: [base_loader.py, yahoo_loader.py, cache.py, feature_store.py, market_state.py]
+  portfolio:
+    purpose: Portfolio construction and allocation
+  risk:
+    purpose: Metrics, stress, VaR, ES, scenarios
+  research:
+    purpose: Experiment tracking and validation
+  game_theory:
+    purpose: Financial WOP-CFR, PM-PSRO, meta-solvers
+  digital_twin:
+    purpose: Agent-based synthetic market simulation
+  world_model:
+    purpose: Latent financial market representation
